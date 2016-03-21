@@ -105,6 +105,14 @@ Dtype caffe_cpu_strided_dot(const int n, const Dtype* x, const int incx,
 template <typename Dtype>
 Dtype caffe_cpu_asum(const int n, const Dtype* x);
 
+// Returns the avg of the absolute values of the elements of vector x
+template <typename Dtype>
+Dtype caffe_cpu_aavg(const int n, const Dtype* x); 
+
+// Returns the max value of the elements of vector x
+template <typename Dtype>
+Dtype caffe_cpu_amax(const int n, const Dtype* x);
+
 // the branchless, type-safe version from
 // http://stackoverflow.com/questions/1903954/is-there-a-standard-sign-function-signum-sgn-in-c-c
 template<typename Dtype>
@@ -233,6 +241,12 @@ void caffe_gpu_dot(const int n, const Dtype* x, const Dtype* y, Dtype* out);
 
 template <typename Dtype>
 void caffe_gpu_asum(const int n, const Dtype* x, Dtype* y);
+
+template <typename Dtype>
+void caffe_gpu_aavg(const int n, const Dtype* x, Dtype* y); 
+
+template <typename Dtype>
+void caffe_gpu_amax(const int n, const Dtype* x, Dtype* y); 
 
 template<typename Dtype>
 void caffe_gpu_sign(const int n, const Dtype* x, Dtype* y);

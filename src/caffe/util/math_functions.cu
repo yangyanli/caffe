@@ -127,6 +127,34 @@ void caffe_gpu_asum<double>(const int n, const double* x, double* y) {
 }
 
 template <>
+void caffe_gpu_aavg<float>(const int n, const float* x, float* y) {
+  caffe_gpu_asum(n, x, y); 
+  *y /= n;
+}
+
+template <>
+void caffe_gpu_aavg<double>(const int n, const double* x, double* y) {
+  caffe_gpu_asum(n, x, y); 
+  *y /= n;
+}
+
+template <>
+void caffe_gpu_amax<float>(const int n, const float* x, float* y) {
+  int idx;
+  CUBLAS_CHECK(cublasIsamax(Caffe::cublas_handle(), n, x, 1, &idx));
+  CUDA_CHECK(cudaMemcpy(y, x+idx, sizeof(float), cudaMemcpyDefault));  // NOLINT(caffe/alt_fn)
+  *y = abs(*y);
+}
+
+template <>
+void caffe_gpu_amax<double>(const int n, const double* x, double* y) {
+  int idx;
+  CUBLAS_CHECK(cublasIdamax(Caffe::cublas_handle(), n, x, 1, &idx));
+  CUDA_CHECK(cudaMemcpy(y, x+idx, sizeof(double), cudaMemcpyDefault));  // NOLINT(caffe/alt_fn)
+  *y = abs(*y);
+}
+
+template <>
 void caffe_gpu_scale<float>(const int n, const float alpha, const float *x,
                             float* y) {
   CUBLAS_CHECK(cublasScopy(Caffe::cublas_handle(), n, x, 1, y, 1));

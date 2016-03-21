@@ -359,6 +359,26 @@ double caffe_cpu_asum<double>(const int n, const double* x) {
 }
 
 template <>
+float caffe_cpu_aavg<float>(const int n, const float* x) {
+    return caffe_cpu_asum(n, x)/n;
+}
+
+template <>
+double caffe_cpu_aavg<double>(const int n, const double* x) {
+    return caffe_cpu_asum(n, x)/n;
+}
+
+template <>
+float caffe_cpu_amax<float>(const int n, const float* x) {
+    return abs(x[cblas_isamax(n, x, 1)]);
+}
+
+template <>
+double caffe_cpu_amax<double>(const int n, const double* x) {
+    return abs(x[cblas_idamax(n, x, 1)]);
+}
+
+template <>
 void caffe_cpu_scale<float>(const int n, const float alpha, const float *x,
                             float* y) {
   cblas_scopy(n, x, 1, y, 1);
