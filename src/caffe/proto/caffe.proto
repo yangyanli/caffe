@@ -239,6 +239,9 @@ message SolverParameter {
   }
   // DEPRECATED: use type instead of solver_type
   optional SolverType solver_type = 30 [default = SGD];
+
+  // If false, don't save a snapshot before training starts.
+  optional bool snapshot_before_train = 41 [default = false];
 }
 
 // A message that stores the solver snapshots

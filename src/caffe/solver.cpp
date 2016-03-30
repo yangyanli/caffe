@@ -287,6 +287,10 @@ void Solver<Dtype>::Solve(const char* resume_file) {
     Restore(resume_file);
   }
 
+  if (param_.snapshot_before_train()) {
+    Snapshot();
+  }
+
   // For a network that is trained by the solver, no bottom or top vecs
   // should be given, and we will just provide dummy vecs.
   int start_iter = iter_;
