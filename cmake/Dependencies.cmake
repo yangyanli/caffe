@@ -176,3 +176,7 @@ endif()
 if(BUILD_docs)
   find_package(Doxygen)
 endif()
+
+# ---[ GLM
+find_package(GLM REQUIRED)
+include_directories(SYSTEM ${GLM_INCLUDE_DIR})

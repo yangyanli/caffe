@@ -3,13 +3,13 @@
 #include "thrust/device_vector.h"
 #include "caffe/util/field_operations.hpp"
 
-#include "caffe/layers/rotate_layer.hpp"
+#include "caffe/layers/transform_3d_layer.hpp"
 
 namespace caffe {
 
 template <typename Dtype>
-__global__ void RotateForward(const int num_grids, const int grid_dim, const int batch_size, const int num_rotation,
-    const Dtype pad_value, const Dtype* bottom_data, const Dtype* rotations, Dtype* top_data) {
+__global__ void Transform3DForward(const int num_grids, const int grid_dim, const int batch_size, const int num_transformations,
+    const Dtype pad_value, const Dtype* bottom_data, const Dtype* transformations, Dtype* top_data) {
   const int t_grid_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread for each grid
   if(t_grid_idx < num_grids) {
@@ -17,20 +17,20 @@ __global__ void RotateForward(const int num_grids, const int grid_dim, const int
     int grid_dim_1 = grid_dim-1;
     const int yz = grid_dim*grid_dim;
     for (int b_batch_idx = 0; b_batch_idx < batch_size; ++ b_batch_idx) {
-      int offset = b_batch_idx * num_rotation;
-      for(int rotation_idx = 0; rotation_idx < num_rotation; ++ rotation_idx) {
+      int offset = b_batch_idx * num_transformations;
+      for(int rotation_idx = 0; rotation_idx < num_transformations; ++ rotation_idx) {
         int t_batch_idx = offset + rotation_idx;
 
         int r_offset = t_batch_idx*9;
-        Dtype r00 = rotations[r_offset++];
-        Dtype r01 = rotations[r_offset++];
-        Dtype r02 = rotations[r_offset++];
-        Dtype r10 = rotations[r_offset++];
-        Dtype r11 = rotations[r_offset++];
-        Dtype r12 = rotations[r_offset++];
-        Dtype r20 = rotations[r_offset++];
-        Dtype r21 = rotations[r_offset++];
-        Dtype r22 = rotations[r_offset++];
+        Dtype r00 = transformations[r_offset++];
+        Dtype r01 = transformations[r_offset++];
+        Dtype r02 = transformations[r_offset++];
+        Dtype r10 = transformations[r_offset++];
+        Dtype r11 = transformations[r_offset++];
+        Dtype r12 = transformations[r_offset++];
+        Dtype r20 = transformations[r_offset++];
+        Dtype r21 = transformations[r_offset++];
+        Dtype r22 = transformations[r_offset++];
 
         int tz = t_grid_idx%grid_dim;
         int ty = (t_grid_idx/grid_dim)%grid_dim;
@@ -67,7 +67,7 @@ __global__ void RotateForward(const int num_grids, const int grid_dim, const int
 }
 
 template <typename Dtype>
-void RotateLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
+void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   ForwardLabel(bottom[1], top[1]);
 
@@ -77,20 +77,20 @@ void RotateLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   const int batch_size = bottom_shape[0];
   const int grid_dim = bottom_shape[1];
   const int num_grids = bottom[0]->count(1);
-  const Dtype* rotations_data = rotations_.gpu_data();
+  const Dtype* transformations_data = transformations_.gpu_data();
 
   // NOLINT_NEXT_LINE(whitespace/operators)
-  RotateForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, grid_dim, batch_size, num_rotation_,
-      pad_value_, bottom_data, rotations_data, top_data);
+  Transform3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, grid_dim, batch_size, num_transformations_,
+      pad_value_, bottom_data, transformations_data, top_data);
   CUDA_POST_KERNEL_CHECK;
 
   //Dtype amax, aavg;
   //caffe_gpu_amax(top[0]->count(), top[0]->gpu_data(), &amax);
   //caffe_gpu_aavg(top[0]->count(), top[0]->gpu_data(), &aavg);
-  //LOG(INFO) << "RotateLayer::Forward_gpu top_data max-avg: " << amax << "\t" << aavg;
+  //LOG(INFO) << "Transform3DLayer::Forward_gpu top_data max-avg: " << amax << "\t" << aavg;
 }
 
-INSTANTIATE_LAYER_GPU_FUNCS(RotateLayer);
+INSTANTIATE_LAYER_GPU_FUNCS(Transform3DLayer);
 
 
 }  // namespace caffe

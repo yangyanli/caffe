@@ -413,7 +413,7 @@ message LayerParameter {
   optional GaussianParameter gaussian_param = 503; 
   optional ShuffleParameter shuffle_param = 504; 
   optional ChopoutParameter chopout_param = 505; 
-  optional RotateParameter rotate_param = 506; 
+  optional Transform3DParameter transform_3d_param = 506; 
   optional Pooling4DParameter pooling_4d_param = 507;
 }
 
@@ -454,15 +454,30 @@ message ChopoutParameter {
   required float pad_value = 8 [default = 0];
 }
 
-message RotateParameter {
-  required float min_rotation_x = 1 [default = 0];
-  required float min_rotation_y = 2 [default = 0];
-  required float min_rotation_z = 3 [default = 0];
-  required float max_rotation_x = 4 [default = 0];
-  required float max_rotation_y = 5 [default = 0];
-  required float max_rotation_z = 6 [default = 0];
-  required uint32 num_rotation = 7 [default = 1];
-  required float pad_value = 8 [default = 0];
+message Transform3DParameter {
+  optional float min_rotation_x = 1 [default = 0];
+  optional float min_rotation_y = 2 [default = 0];
+  optional float min_rotation_z = 3 [default = 0];
+  optional float max_rotation_x = 4 [default = 0];
+  optional float max_rotation_y = 5 [default = 0];
+  optional float max_rotation_z = 6 [default = 0];
+
+  optional float min_translation_x = 7 [default = 0];
+  optional float min_translation_y = 8 [default = 0];
+  optional float min_translation_z = 9 [default = 0];
+  optional float max_translation_x = 10 [default = 0];
+  optional float max_translation_y = 11 [default = 0];
+  optional float max_translation_z = 12 [default = 0];
+  
+  optional float min_scaling_x = 13 [default = 1.0];
+  optional float min_scaling_y = 14 [default = 1.0];
+  optional float min_scaling_z = 15 [default = 1.0];
+  optional float max_scaling_x = 16 [default = 1.0];
+  optional float max_scaling_y = 17 [default = 1.0];
+  optional float max_scaling_z = 18 [default = 1.0];
+ 
+  required uint32 num_transformations = 19 [default = 1];
+  required float pad_value = 20 [default = 0];
 }
 
 message Pooling4DParameter {
