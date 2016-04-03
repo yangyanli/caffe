@@ -32,10 +32,10 @@ void ProbingCurvesLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, c
 
     Dtype* weight = this->blobs_[0]->mutable_cpu_data();
     int dim_field = probing_curves_param.dim_field();
-    for (int i = 0; i < this->blobs_[0]->count()/4; i += 4) {
+    for (int i = 0; i < this->blobs_[0]->count()/4; i ++) {
       weight[i*4+0] *= dim_field;
       weight[i*4+1] *= dim_field;
-      weight[i*4+1] *= dim_field;
+      weight[i*4+2] *= dim_field;
       weight[i*4+3] = 1.0;
     }
   }
