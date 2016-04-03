@@ -63,10 +63,10 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
     Dtype* top_data = NULL;
     Dtype* top_normal_data = NULL;
     if(output_normal_) {
-      top_data = top[2*i+0]->mutable_cpu_data();
-      top_normal_data = top[2*i+1]->mutable_cpu_data();
+      top_data = top[2*(i-1)+0]->mutable_cpu_data();
+      top_normal_data = top[2*(i-1)+1]->mutable_cpu_data();
     } else {
-      top_data = top[i]->mutable_cpu_data();
+      top_data = top[i-1]->mutable_cpu_data();
     }
 
     for (int grid_idx = 0; grid_idx < num_grids; ++ grid_idx) {
@@ -215,8 +215,8 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
       } /* num_grids */
     }
     if (rand()%100 == 0) {
-      Dtype amax = caffe_cpu_amax(top[i]->count(), top_diff);
-      Dtype aavg = caffe_cpu_aavg(top[i]->count(), top_diff);
+      Dtype amax = caffe_cpu_amax(top[i-1]->count(), top_diff);
+      Dtype aavg = caffe_cpu_aavg(top[i-1]->count(), top_diff);
       LOG(INFO) << "FieldProbingLayer::Backward_cpu top_diff max-avg: " << amax << "\t" << aavg;
     }
   } /* top.size() */

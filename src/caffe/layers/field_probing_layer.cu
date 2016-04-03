@@ -266,8 +266,8 @@ void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
     
     if (rand()%100 == 0) {
       Dtype amax, aavg;
-      caffe_gpu_amax(top[i]->count(), top_diff, &amax);
-      caffe_gpu_aavg(top[i]->count(), top_diff, &aavg);
+      caffe_gpu_amax(top[i-1]->count(), top_diff, &amax);
+      caffe_gpu_aavg(top[i-1]->count(), top_diff, &aavg);
       LOG(INFO) << "FieldProbingLayer::Backward_gpu top_diff max-avg: " << amax << "\t" << aavg;
     }
   } /* top.size() */
