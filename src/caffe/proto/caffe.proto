@@ -409,7 +409,7 @@ message LayerParameter {
 
   // Curvolution related parameters
   optional CurvolutionParameter curvolution_param = 501; 
-  optional FieldProbingParameter field_probing_param = 502; 
+  optional ProbingCurvesParameter probing_curves_param = 502; 
   optional GaussianParameter gaussian_param = 503; 
   optional ShuffleParameter shuffle_param = 504; 
   optional ChopoutParameter chopout_param = 505; 
@@ -422,11 +422,16 @@ message CurvolutionParameter {
   required FillerParameter bias_filler = 2; // The filler for the bias
 }
 
-message FieldProbingParameter {
+message ProbingCurvesParameter {
   required uint32 dim_grid = 1 [default = 8];
-  required uint32 num_curve = 2 [default = 16];
-  required uint32 len_curve = 3 [default = 64];
-  required FillerParameter weight_filler = 4; // The filler for the weight
+  required uint32 num_curve = 2 [default = 2];
+  required uint32 len_curve = 3 [default = 8];
+  required uint32 dim_field = 4 [default = 64];
+  required float min_span = 5 [default = 0.1];
+  required float max_span = 6 [default = 0.2];
+  required uint32 num_padding = 7 [default = 1];
+  optional bool shuffle = 8 [default = false]; 
+  optional uint32 max_ctl_num = 9 [default = 0];
 }
 
 message GaussianParameter { 

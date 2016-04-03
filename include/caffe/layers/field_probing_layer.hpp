@@ -1,5 +1,5 @@
-#ifndef CAFFE_SPACE_TRAVEL_LAYER_HPP_
-#define CAFFE_SPACE_TRAVEL_LAYER_HPP_
+#ifndef CAFFE_FIELD_PROBING_LAYER_HPP_
+#define CAFFE_FIELD_PROBING_LAYER_HPP_
 
 #include <string>
 #include <utility>
@@ -26,7 +26,7 @@ public:
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline int MinBottomBlobs() const { return 1; }
+  virtual inline int MinBottomBlobs() const { return 2; }
   virtual inline int MinTopBlobs() const { return 1; }
   virtual inline bool EqualNumBottomTopBlobs() const { return false; }
 
@@ -48,4 +48,4 @@ protected:
 
 }  // namespace caffe
 
-#endif  // CAFFE_SPACE_TRAVEL_LAYER_HPP_
+#endif  // CAFFE_FIELD_PROBING_LAYER_HPP_

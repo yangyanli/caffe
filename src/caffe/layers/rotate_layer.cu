@@ -1,61 +1,11 @@
 #include <vector>
 
 #include "thrust/device_vector.h"
+#include "caffe/util/field_operations.hpp"
 
 #include "caffe/layers/rotate_layer.hpp"
 
 namespace caffe {
-
-template<typename Dtype>
-__device__ void SnapGrid_gpu(Dtype& value, int& value_0, int& value_1, const int max) {
-  if (value > 0 && value < max) {
-    value_0 = floor(value);
-  } else if (value <= 0) {
-    value = 0;
-    value_0 = 0;
-  } else /*(value >= max)*/ {
-    value = max;
-    value_0 = max-1;
-  }
-  value_1 = value_0 + 1;
-}
-
-template<typename Dtype>
-__device__ Dtype Interpolate_gpu(const Dtype* df, const int batch_idx,
-  const int x0, const int y0, const int z0,
-  const int x1, const int y1, const int z1,
-  const Dtype x_x0, const Dtype y_y0, const Dtype z_z0,
-  const Dtype x1_x, const Dtype y1_y, const Dtype z1_z,
-  const int df_dim_x, const int df_dim_y, const int df_dim_z) {
-  int b_offset_000 = ((batch_idx * df_dim_x + x0) * df_dim_y + y0) * df_dim_z + z0;
-  int b_offset_001 = ((batch_idx * df_dim_x + x0) * df_dim_y + y0) * df_dim_z + z1;
-  int b_offset_010 = ((batch_idx * df_dim_x + x0) * df_dim_y + y1) * df_dim_z + z0;
-  int b_offset_011 = ((batch_idx * df_dim_x + x0) * df_dim_y + y1) * df_dim_z + z1;
-  int b_offset_100 = ((batch_idx * df_dim_x + x1) * df_dim_y + y0) * df_dim_z + z0;
-  int b_offset_101 = ((batch_idx * df_dim_x + x1) * df_dim_y + y0) * df_dim_z + z1;
-  int b_offset_110 = ((batch_idx * df_dim_x + x1) * df_dim_y + y1) * df_dim_z + z0;
-  int b_offset_111 = ((batch_idx * df_dim_x + x1) * df_dim_y + y1) * df_dim_z + z1;
-
-  Dtype v000 = df[b_offset_000];
-  Dtype v001 = df[b_offset_001];
-  Dtype v010 = df[b_offset_010];
-  Dtype v011 = df[b_offset_011];
-  Dtype v100 = df[b_offset_100];
-  Dtype v101 = df[b_offset_101];
-  Dtype v110 = df[b_offset_110];
-  Dtype v111 = df[b_offset_111];
-
-  Dtype c00 = v000*x1_x+v100*x_x0;
-  Dtype c10 = v010*x1_x+v110*x_x0;
-  Dtype c01 = v001*x1_x+v101*x_x0;
-  Dtype c11 = v011*x1_x+v111*x_x0;
-
-  Dtype c0 = c00*y1_y+c10*y_y0;
-  Dtype c1 = c01*y1_y+c11*y_y0;
-
-  return c0*z1_z+c1*z_z0;
-}
-
 
 template <typename Dtype>
 __global__ void RotateForward(const int num_grids, const int grid_dim, const int batch_size, const int num_rotation,

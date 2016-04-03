@@ -11,7 +11,6 @@
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/syncedmem.hpp"
 #include "caffe/util/math_functions.hpp"
-#include "caffe/fillers/curves.hpp"
 
 namespace caffe {
 
@@ -285,9 +284,7 @@ Filler<Dtype>* GetFiller(const FillerParameter& param) {
     return new MSRAFiller<Dtype>(param);
   } else if (type == "bilinear") {
     return new BilinearFiller<Dtype>(param);
-  } else if (type == "curves") {
-    return new CurvesFiller<Dtype>(param);
-  }else {
+  } else {
     CHECK(false) << "Unknown filler name: " << param.type();
   }
   return (Filler<Dtype>*)(NULL);
