@@ -1,5 +1,3 @@
-#include <cmath>
-
 #define GLM_FORCE_RADIANS
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>

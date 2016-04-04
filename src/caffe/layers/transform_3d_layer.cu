@@ -1,6 +1,3 @@
-#include <vector>
-
-#include "thrust/device_vector.h"
 #include "caffe/util/field_operations.hpp"
 
 #include "caffe/layers/transform_3d_layer.hpp"
