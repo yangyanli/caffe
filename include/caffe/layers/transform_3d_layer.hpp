@@ -1,17 +1,14 @@
 #ifndef CAFFE_TRANSFORM_3D_LAYER_HPP_
 #define CAFFE_TRANSFORM_3D_LAYER_HPP_
 
-#include <utility>
-#include <vector>
+#include <boost/random.hpp>
 
 #include "caffe/blob.hpp"
 #include "caffe/layer.hpp"
+#include "caffe/util/rng.hpp"
 #include "caffe/proto/caffe.pb.h"
 
-#include "caffe/layer.hpp"
-
 namespace caffe {
-
 
 template <typename Dtype>
 class Transform3DLayer : public Layer<Dtype> {
@@ -41,32 +38,30 @@ class Transform3DLayer : public Layer<Dtype> {
     NOT_IMPLEMENTED;
   }
 
-  void PrepareMappingAndRotations(void);
   void ForwardLabel(Blob<Dtype>* input_labels, Blob<Dtype>* output_labels);
 
-  Dtype min_rotation_x_;
-  Dtype min_rotation_y_;
-  Dtype min_rotation_z_;
-  Dtype max_rotation_x_;
-  Dtype max_rotation_y_;
-  Dtype max_rotation_z_;
+  typedef boost::variate_generator<caffe::rng_t*, boost::uniform_real<Dtype> > VariateGenerator;
+  boost::shared_ptr<VariateGenerator> rotation_x_;
+  boost::shared_ptr<VariateGenerator> rotation_y_;
+  boost::shared_ptr<VariateGenerator> rotation_z_;
+  boost::shared_ptr<VariateGenerator> translation_x_;
+  boost::shared_ptr<VariateGenerator> translation_y_;
+  boost::shared_ptr<VariateGenerator> translation_z_;
+  boost::shared_ptr<VariateGenerator> scaling_x_;
+  boost::shared_ptr<VariateGenerator> scaling_y_;
+  boost::shared_ptr<VariateGenerator> scaling_z_;
 
-  Dtype min_translation_x_;
-  Dtype min_translation_y_;
-  Dtype min_translation_z_;
-  Dtype max_translation_x_;
-  Dtype max_translation_y_;
-  Dtype max_translation_z_;
-
-  Dtype min_scaling_x_;
-  Dtype min_scaling_y_;
-  Dtype min_scaling_z_;
-  Dtype max_scaling_x_;
-  Dtype max_scaling_y_;
-  Dtype max_scaling_z_;
-
+  /*
+  Layout of the transformation parameters
+  a b c tx
+  d e f ty
+  g h i tz
+  */
+  static const int len_transformation_param = 12;
+  void GetTransformation(Dtype* transformation);
+  void GetVariateGenerator(boost::shared_ptr<VariateGenerator>& vg, Dtype min, Dtype max);
+  
   Dtype pad_value_;
-
   int num_transformations_;
   Blob<Dtype> transformations_;
 };

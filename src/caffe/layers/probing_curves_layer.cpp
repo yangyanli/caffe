@@ -75,7 +75,7 @@ void ProbingCurvesLayer<Dtype>::Fill(Blob<Dtype>* blob, const ProbingCurvesParam
   Dtype min = probing_curves_param.min_span();
   Dtype max = probing_curves_param.max_span();
   if (min == max) {
-    max = min + 0.000001;
+    max = boost::math::float_next(min);
   }
   int max_ctl_num = probing_curves_param.max_ctl_num()+1;
 

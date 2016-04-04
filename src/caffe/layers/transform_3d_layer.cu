@@ -9,7 +9,7 @@ namespace caffe {
 
 template <typename Dtype>
 __global__ void Transform3DForward(const int num_grids, const int grid_dim, const int batch_size, const int num_transformations,
-    const Dtype pad_value, const Dtype* bottom_data, const Dtype* transformations, Dtype* top_data) {
+    const Dtype pad_value, const Dtype* bottom_data, const Dtype* transformations, Dtype* top_data, const int len_transformation_param) {
   const int t_grid_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread for each grid
   if(t_grid_idx < num_grids) {
@@ -18,31 +18,34 @@ __global__ void Transform3DForward(const int num_grids, const int grid_dim, cons
     const int yz = grid_dim*grid_dim;
     for (int b_batch_idx = 0; b_batch_idx < batch_size; ++ b_batch_idx) {
       int offset = b_batch_idx * num_transformations;
-      for(int rotation_idx = 0; rotation_idx < num_transformations; ++ rotation_idx) {
-        int t_batch_idx = offset + rotation_idx;
+      for(int transformation_idx = 0; transformation_idx < num_transformations; ++ transformation_idx) {
+        int t_batch_idx = offset + transformation_idx;
 
-        int r_offset = t_batch_idx*9;
-        Dtype r00 = transformations[r_offset++];
-        Dtype r01 = transformations[r_offset++];
-        Dtype r02 = transformations[r_offset++];
-        Dtype r10 = transformations[r_offset++];
-        Dtype r11 = transformations[r_offset++];
-        Dtype r12 = transformations[r_offset++];
-        Dtype r20 = transformations[r_offset++];
-        Dtype r21 = transformations[r_offset++];
-        Dtype r22 = transformations[r_offset++];
+        int p = t_batch_idx*len_transformation_param;
+        Dtype a = transformations[p++];
+        Dtype b = transformations[p++];
+        Dtype c = transformations[p++];
+        Dtype tx = transformations[p++];
+        Dtype d = transformations[p++];
+        Dtype e = transformations[p++];
+        Dtype f = transformations[p++];
+        Dtype ty = transformations[p++];
+        Dtype g = transformations[p++];
+        Dtype h = transformations[p++];
+        Dtype i = transformations[p++];
+        Dtype tz = transformations[p++];
 
-        int tz = t_grid_idx%grid_dim;
-        int ty = (t_grid_idx/grid_dim)%grid_dim;
-        int tx = t_grid_idx/yz;
+        int z = t_grid_idx%grid_dim;
+        int y = (t_grid_idx/grid_dim)%grid_dim;
+        int x = t_grid_idx/yz;
 
-        Dtype txx = tx+0.5-c_offset;
-        Dtype tyy = ty+0.5-c_offset;
-        Dtype tzz = tz+0.5-c_offset;
+        Dtype xx = x+0.5-c_offset;
+        Dtype yy = y+0.5-c_offset;
+        Dtype zz = z+0.5-c_offset;
 
-        Dtype bx = r00*txx + r01*tyy + r02*tzz + c_offset;
-        Dtype by = r10*txx + r11*tyy + r12*tzz + c_offset;
-        Dtype bz = r20*txx + r21*tyy + r22*tzz + c_offset;
+        Dtype bx = a*xx + b*yy + c*zz + tx + c_offset;
+        Dtype by = d*xx + e*yy + f*zz + ty + c_offset;
+        Dtype bz = g*xx + h*yy + i*zz + tz + c_offset;
 
         if(bx >= 0 && bx < grid_dim
             && by >= 0 && by < grid_dim
@@ -61,7 +64,7 @@ __global__ void Transform3DForward(const int num_grids, const int grid_dim, cons
         } else {
           top_data[t_batch_idx*num_grids+t_grid_idx] = pad_value;
         }
-      } /* rotation_idx */
+      } /* transformation_idx */
     } /* b_batch_idx */
   }
 }
@@ -81,16 +84,10 @@ void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
 
   // NOLINT_NEXT_LINE(whitespace/operators)
   Transform3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, grid_dim, batch_size, num_transformations_,
-      pad_value_, bottom_data, transformations_data, top_data);
+      pad_value_, bottom_data, transformations_data, top_data, len_transformation_param);
   CUDA_POST_KERNEL_CHECK;
-
-  //Dtype amax, aavg;
-  //caffe_gpu_amax(top[0]->count(), top[0]->gpu_data(), &amax);
-  //caffe_gpu_aavg(top[0]->count(), top[0]->gpu_data(), &aavg);
-  //LOG(INFO) << "Transform3DLayer::Forward_gpu top_data max-avg: " << amax << "\t" << aavg;
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(Transform3DLayer);
-
 
 }  // namespace caffe

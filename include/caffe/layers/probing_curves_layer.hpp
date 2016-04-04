@@ -1,9 +1,6 @@
 #ifndef CAFFE_PROBING_CURVES_LAYER_HPP_
 #define CAFFE_PROBING_CURVES_LAYER_HPP_
 
-#include <string>
-#include <utility>
-#include <vector>
 #include <boost/random.hpp>
 
 #include "caffe/blob.hpp"
