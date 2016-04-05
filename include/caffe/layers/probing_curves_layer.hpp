@@ -38,6 +38,7 @@ protected:
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
+  int batch_size_;
   int dim_grid_;
   int num_curve_;
   int len_curve_;

@@ -432,6 +432,8 @@ message ProbingCurvesParameter {
   required uint32 num_padding = 7 [default = 1];
   optional bool shuffle = 8 [default = false]; 
   optional uint32 max_ctl_num = 9 [default = 0];
+  required uint32 batch_size_train = 10;
+  required uint32 batch_size_test = 11;
 }
 
 message GaussianParameter { 

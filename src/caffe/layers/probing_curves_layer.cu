@@ -9,15 +9,22 @@ namespace caffe {
 template<typename Dtype>
 void ProbingCurvesLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   const Dtype* weight = this->blobs_[0]->gpu_data();
-  Dtype* top_data = top[0]->mutable_gpu_data();
-  caffe_copy(this->blobs_[0]->count(), weight, top_data);
+  int weight_count = this->blobs_[0]->count();
+  for (int i = 0; i < batch_size_; ++ i) {
+    Dtype* top_data = top[0]->mutable_gpu_data()+weight_count*i;
+    caffe_copy(weight_count, weight, top_data);
+  }
 }
 
 template<typename Dtype>
 void ProbingCurvesLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const Dtype* top_diff = top[0]->gpu_diff();
   Dtype* weight_diff = this->blobs_[0]->mutable_gpu_diff();
-  caffe_copy(this->blobs_[0]->count(), top_diff, weight_diff);
+  int weight_count = this->blobs_[0]->count();
+  caffe_gpu_set(weight_count, Dtype(0), weight_diff);
+  for (int i = 0; i < batch_size_; ++ i) {
+    const Dtype* top_diff = top[0]->gpu_diff()+weight_count*i;
+    caffe_gpu_add(weight_count, top_diff, weight_diff, weight_diff);
+  }
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(ProbingCurvesLayer);

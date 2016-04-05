@@ -6,6 +6,7 @@ namespace caffe {
 template<typename Dtype>
 void ProbingCurvesLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   const ProbingCurvesParameter& probing_curves_param = this->layer_param_.probing_curves_param();
+  batch_size_ = (this->phase_ == TRAIN)?probing_curves_param.batch_size_train():probing_curves_param.batch_size_test();
   dim_grid_ = probing_curves_param.dim_grid();
   num_curve_ = probing_curves_param.num_curve();
   len_curve_ = probing_curves_param.len_curve();
@@ -43,21 +44,33 @@ void ProbingCurvesLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, c
 
 template<typename Dtype>
 void ProbingCurvesLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  top[0]->Reshape(this->blobs_[0]->shape());
+  const std::vector<int>& probing_curves_shape = this->blobs_[0]->shape();
+  std::vector<int> top_shape;
+  top_shape.push_back(batch_size_);
+  top_shape.insert(top_shape.end(), probing_curves_shape.begin(), probing_curves_shape.end());
+
+  top[0]->Reshape(top_shape);
 }
 
 template<typename Dtype>
 void ProbingCurvesLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   const Dtype* weight = this->blobs_[0]->cpu_data();
-  Dtype* top_data = top[0]->mutable_cpu_data();
-  caffe_copy(this->blobs_[0]->count(), weight, top_data);
+  int weight_count = this->blobs_[0]->count();
+  for (int i = 0; i < batch_size_; ++ i) {
+    Dtype* top_data = top[0]->mutable_cpu_data()+weight_count*i;
+    caffe_copy(weight_count, weight, top_data);
+  }
 }
 
 template<typename Dtype>
 void ProbingCurvesLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const Dtype* top_diff = top[0]->cpu_diff();
   Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
-  caffe_copy(this->blobs_[0]->count(), top_diff, weight_diff);
+  int weight_count = this->blobs_[0]->count();
+  caffe_set(weight_count, Dtype(0), weight_diff);
+  for (int i = 0; i < batch_size_; ++ i) {
+    const Dtype* top_diff = top[0]->cpu_diff()+weight_count*i;
+    caffe_add(weight_count, top_diff, weight_diff, weight_diff);
+  }
 }
 
 template<typename Dtype>

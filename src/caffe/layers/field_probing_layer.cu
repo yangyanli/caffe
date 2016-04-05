@@ -75,8 +75,6 @@ __global__ void FieldProbingForwardWithNormal(const int num_samples, const int b
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  const Dtype* probing_curves = bottom[0]->gpu_data();
-
   const vector<int>& field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
   int field_dim_x = field_shape[1];
@@ -87,8 +85,10 @@ void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, c
   int field_dim_z_1 = field_dim_z-1;
   int num_grids = dim_grid_*dim_grid_*dim_grid_;
   int num_samples = num_grids*num_curve_*len_curve_;
+  int probing_curves_size = bottom[0]->count(1);
 
   for (int i = 1; i < bottom.size(); ++ i) {
+    const Dtype* probing_curves = bottom[0]->gpu_data() + probing_curves_size*(i-1);
     const Dtype* bottom_data = bottom[i]->gpu_data();
     if(output_normal_) {
       Dtype* top_data = top[2*(i-1)+0]->mutable_gpu_data();
@@ -233,12 +233,13 @@ void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
   int field_dim_z_1 = field_dim_z-1;
   int num_grids = dim_grid_*dim_grid_*dim_grid_;
   int num_samples = num_grids*num_curve_*len_curve_;
+  int probing_curves_size = bottom[0]->count(1);
 
-  const Dtype* probing_curves = bottom[0]->gpu_data();
-  Dtype* probing_curves_diff = bottom[0]->mutable_gpu_diff();
-  caffe_gpu_set(bottom[0]->count(), Dtype(0), probing_curves_diff);
+  caffe_gpu_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_gpu_diff());
 
   for (int i = 1; i < bottom.size(); ++i) {
+    const Dtype* probing_curves = bottom[0]->gpu_data()+probing_curves_size*(i-1);
+    Dtype* probing_curves_diff = bottom[0]->mutable_gpu_diff()+probing_curves_size*(i-1);
     const Dtype* top_diff = NULL;
     const Dtype* top_normal_diff = NULL;
     if (output_normal_) {

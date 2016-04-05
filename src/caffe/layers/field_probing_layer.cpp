@@ -6,29 +6,30 @@ namespace caffe {
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+  const std::vector<int>& probing_curves_shape = bottom[0]->shape();
+  CHECK_EQ(probing_curves_shape.size(), 7) << "Probing curves must be in N*D*D*D*C*L*3 shape.";
+
+  int batch_size = bottom[1]->shape()[0];
+  CHECK_EQ(probing_curves_shape[0], batch_size) << "Probing curves must have the same batch size as input field(s).";
+
   for (int bottom_id = 2; bottom_id < bottom.size(); ++bottom_id) {
     CHECK(bottom[1]->shape() == bottom[bottom_id]->shape())
         << "All input fields must have the same shape.";
   }
 
-  const std::vector<int>& probing_curves_shape = bottom[0]->shape();
-  dim_grid_ = probing_curves_shape[0];
-  //dim_grid_ = probing_curves_shape[1];
+  dim_grid_ = probing_curves_shape[1];
   //dim_grid_ = probing_curves_shape[2];
-  num_curve_ = probing_curves_shape[3];
-  len_curve_ = probing_curves_shape[4];
+  //dim_grid_ = probing_curves_shape[3];
+  num_curve_ = probing_curves_shape[4];
+  len_curve_ = probing_curves_shape[5];
 
   output_normal_ = (top.size() == 2*(bottom.size()-1));
 }
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  int batch_size = bottom[1]->shape(0);
   const vector<int>& probing_curves_shape = bottom[0]->shape();
-
-  vector<int> top_shape;
-  top_shape.push_back(batch_size);
-  top_shape.insert(top_shape.end(), probing_curves_shape.begin(), probing_curves_shape.end());
+  vector<int> top_shape = probing_curves_shape;
   top_shape.back() = 1;
 
   vector<int> top_normal_shape = top_shape;
@@ -45,8 +46,6 @@ void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  const Dtype* probing_curves = bottom[0]->cpu_data();
-
   const vector<int>& field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
   int field_dim_x = field_shape[1];
@@ -57,8 +56,10 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
   int field_dim_z_1 = field_dim_z-1;
   int num_grids = dim_grid_*dim_grid_*dim_grid_;
   int num_samples = num_grids*num_curve_*len_curve_;
+  int probing_curves_size = bottom[0]->count(1);
 
   for (int i = 1; i < bottom.size(); ++ i) {
+    const Dtype* probing_curves = bottom[0]->cpu_data()+probing_curves_size*(i-1);
     const Dtype* bottom_data = bottom[i]->cpu_data();
     Dtype* top_data = NULL;
     Dtype* top_normal_data = NULL;
@@ -119,9 +120,7 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const Dtype* probing_curves = bottom[0]->cpu_data();
-  Dtype* probing_curves_diff = bottom[0]->mutable_cpu_diff();
-  caffe_set(bottom[0]->count(), Dtype(0), probing_curves_diff);
+  caffe_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_cpu_diff());
 
   const vector<int>& field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
@@ -133,8 +132,11 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
   int field_dim_z_1 = field_dim_z-1;
   int num_grids = dim_grid_*dim_grid_*dim_grid_;
   int num_samples = num_grids*num_curve_*len_curve_;
+  int probing_curves_size = bottom[0]->count(1);
 
   for (int i = 1; i < bottom.size(); ++i) {
+    const Dtype* probing_curves = bottom[0]->cpu_data()+probing_curves_size*(i-1);
+    Dtype* probing_curves_diff = bottom[0]->mutable_cpu_diff()+probing_curves_size*(i-1);
     const Dtype* top_diff = NULL;
     const Dtype* top_normal_diff = NULL;
     if (output_normal_) {
