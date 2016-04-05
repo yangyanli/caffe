@@ -1,10 +1,6 @@
 #ifndef CAFFE_FIELD_PROBING_LAYER_HPP_
 #define CAFFE_FIELD_PROBING_LAYER_HPP_
 
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
 #include "caffe/layer.hpp"
@@ -40,9 +36,6 @@ protected:
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-  int dim_grid_;
-  int num_curve_;
-  int len_curve_;
   bool output_normal_;
 };
 

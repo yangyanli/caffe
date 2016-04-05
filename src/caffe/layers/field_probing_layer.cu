@@ -83,9 +83,8 @@ void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, c
   int field_dim_x_1 = field_dim_x-1;
   int field_dim_y_1 = field_dim_y-1;
   int field_dim_z_1 = field_dim_z-1;
-  int num_grids = dim_grid_*dim_grid_*dim_grid_;
-  int num_samples = num_grids*num_curve_*len_curve_;
   int probing_curves_size = bottom[0]->count(1);
+  int num_samples = probing_curves_size/4;
 
   for (int i = 1; i < bottom.size(); ++ i) {
     const Dtype* probing_curves = bottom[0]->gpu_data() + probing_curves_size*(i-1);
@@ -231,9 +230,8 @@ void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
   int field_dim_x_1 = field_dim_x-1;
   int field_dim_y_1 = field_dim_y-1;
   int field_dim_z_1 = field_dim_z-1;
-  int num_grids = dim_grid_*dim_grid_*dim_grid_;
-  int num_samples = num_grids*num_curve_*len_curve_;
   int probing_curves_size = bottom[0]->count(1);
+  int num_samples = probing_curves_size/4;
 
   caffe_gpu_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_gpu_diff());
 

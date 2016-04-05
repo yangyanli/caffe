@@ -7,7 +7,7 @@ namespace caffe {
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   const std::vector<int>& probing_curves_shape = bottom[0]->shape();
-  CHECK_EQ(probing_curves_shape.size(), 7) << "Probing curves must be in N*D*D*D*C*L*3 shape.";
+  CHECK_EQ(probing_curves_shape.size(), 7) << "Probing curves must be in N*D*D*D*C*L*4 shape.";
 
   int batch_size = bottom[1]->shape()[0];
   CHECK_EQ(probing_curves_shape[0], batch_size) << "Probing curves must have the same batch size as input field(s).";
@@ -16,12 +16,6 @@ void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, co
     CHECK(bottom[1]->shape() == bottom[bottom_id]->shape())
         << "All input fields must have the same shape.";
   }
-
-  dim_grid_ = probing_curves_shape[1];
-  //dim_grid_ = probing_curves_shape[2];
-  //dim_grid_ = probing_curves_shape[3];
-  num_curve_ = probing_curves_shape[4];
-  len_curve_ = probing_curves_shape[5];
 
   output_normal_ = (top.size() == 2*(bottom.size()-1));
 }
@@ -54,9 +48,9 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
   int field_dim_x_1 = field_dim_x-1;
   int field_dim_y_1 = field_dim_y-1;
   int field_dim_z_1 = field_dim_z-1;
-  int num_grids = dim_grid_*dim_grid_*dim_grid_;
-  int num_samples = num_grids*num_curve_*len_curve_;
+
   int probing_curves_size = bottom[0]->count(1);
+  int num_samples = probing_curves_size/4;
 
   for (int i = 1; i < bottom.size(); ++ i) {
     const Dtype* probing_curves = bottom[0]->cpu_data()+probing_curves_size*(i-1);
@@ -70,51 +64,44 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
       top_data = top[i-1]->mutable_cpu_data();
     }
 
-    for (int grid_idx = 0; grid_idx < num_grids; ++ grid_idx) {
-      int g_offset = grid_idx * num_curve_ * len_curve_;
-      for (int c = 0; c < num_curve_; ++ c) {
-        int c_offset = c * len_curve_;
-        for (int l = 0; l < len_curve_; ++ l) {
-          int sample_idx = (g_offset + c_offset + l);
-          int p_offset = sample_idx * 4;
-          Dtype x = probing_curves[p_offset+0];
-          Dtype y = probing_curves[p_offset+1];
-          Dtype z = probing_curves[p_offset+2];
-          int x0, y0, z0, x1, y1, z1;
-          Dtype x_a, y_a, z_a, x_m, y_m, z_m;
-          SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_x_1);
-          SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_y_1);
-          SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_z_1);
-          Dtype x_x0 = x-x0;
-          Dtype y_y0 = y-y0;
-          Dtype z_z0 = z-z0;
-          Dtype x1_x = x1-x;
-          Dtype y1_y = y1-y;
-          Dtype z1_z = z1-z;
-          for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
-            int n_offset = batch_idx * num_samples;
-            int top_offset = n_offset + g_offset + c_offset + l;
-            if(output_normal_) {
-              Dtype nx, ny, nz;
-              top_data[top_offset] = ComputeGradient_cpu(bottom_data, batch_idx,
-                  x0, y0, z0, x1, y1, z1,
-                  x_a, y_a, z_a, x_m, y_m, z_m,
-                  x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-                  nx, ny, nz, field_dim_x, field_dim_y, field_dim_z);
-              Normalize_cpu(nx, ny, nz);
-              top_normal_data[top_offset*3+0] = nx;
-              top_normal_data[top_offset*3+1] = ny;
-              top_normal_data[top_offset*3+2] = nz;
-            } else {
-              top_data[top_offset] = Interpolate_cpu(bottom_data, batch_idx,
-                  x0, y0, z0, x1, y1, z1,
-                  x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-                  field_dim_x, field_dim_y, field_dim_z);
-            }
-          } /* batch_size */
-        } /* len_curve */
-      } /* num_curve */
-    } /* num_grids */
+    for (int sample_idx = 0; sample_idx < num_samples; ++ sample_idx) {
+      int p_offset = sample_idx * 4;
+      Dtype x = probing_curves[p_offset+0];
+      Dtype y = probing_curves[p_offset+1];
+      Dtype z = probing_curves[p_offset+2];
+      int x0, y0, z0, x1, y1, z1;
+      Dtype x_a, y_a, z_a, x_m, y_m, z_m;
+      SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_x_1);
+      SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_y_1);
+      SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_z_1);
+      Dtype x_x0 = x-x0;
+      Dtype y_y0 = y-y0;
+      Dtype z_z0 = z-z0;
+      Dtype x1_x = x1-x;
+      Dtype y1_y = y1-y;
+      Dtype z1_z = z1-z;
+      for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
+        int n_offset = batch_idx * num_samples;
+        int top_offset = n_offset + sample_idx;
+        if(output_normal_) {
+          Dtype nx, ny, nz;
+          top_data[top_offset] = ComputeGradient_cpu(bottom_data, batch_idx,
+              x0, y0, z0, x1, y1, z1,
+              x_a, y_a, z_a, x_m, y_m, z_m,
+              x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
+              nx, ny, nz, field_dim_x, field_dim_y, field_dim_z);
+          Normalize_cpu(nx, ny, nz);
+          top_normal_data[top_offset*3+0] = nx;
+          top_normal_data[top_offset*3+1] = ny;
+          top_normal_data[top_offset*3+2] = nz;
+        } else {
+          top_data[top_offset] = Interpolate_cpu(bottom_data, batch_idx,
+              x0, y0, z0, x1, y1, z1,
+              x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
+              field_dim_x, field_dim_y, field_dim_z);
+        }
+      } /* batch_size */
+    } /* num_samples */
   } /* bottom.size() */
 }
 
@@ -130,11 +117,13 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
   int field_dim_x_1 = field_dim_x-1;
   int field_dim_y_1 = field_dim_y-1;
   int field_dim_z_1 = field_dim_z-1;
-  int num_grids = dim_grid_*dim_grid_*dim_grid_;
-  int num_samples = num_grids*num_curve_*len_curve_;
   int probing_curves_size = bottom[0]->count(1);
+  int num_samples = probing_curves_size/4;
 
   for (int i = 1; i < bottom.size(); ++i) {
+    if (!(propagate_down[0] || propagate_down[i])) 
+      continue;
+
     const Dtype* probing_curves = bottom[0]->cpu_data()+probing_curves_size*(i-1);
     Dtype* probing_curves_diff = bottom[0]->mutable_cpu_diff()+probing_curves_size*(i-1);
     const Dtype* top_diff = NULL;
@@ -145,83 +134,75 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
     } else {
       top_diff = top[i-1]->cpu_diff();
     }
-    if (propagate_down[0] || propagate_down[i]) {
-      const Dtype* bottom_data = bottom[i]->cpu_data();
+ 
+    const Dtype* bottom_data = bottom[i]->cpu_data();
+    for (int sample_idx = 0; sample_idx < num_samples; ++ sample_idx) {
+      int p_offset = sample_idx * 4;
 
-      for (int grid_idx = 0; grid_idx < num_grids; ++ grid_idx) {
-        int g_offset = grid_idx * num_curve_ * len_curve_;
-        for (int c = 0; c < num_curve_; ++ c) {
-          int c_offset = c * len_curve_;
-          for (int l = 0; l < len_curve_; ++ l) {
-            int sample_idx = (g_offset + c_offset + l);
-            int p_offset = sample_idx * 4;
+      Dtype x = probing_curves[p_offset+0];
+      Dtype y = probing_curves[p_offset+1];
+      Dtype z = probing_curves[p_offset+2];
 
-            Dtype x = probing_curves[p_offset+0];
-            Dtype y = probing_curves[p_offset+1];
-            Dtype z = probing_curves[p_offset+2];
+      int x0, y0, z0, x1, y1, z1;
+      Dtype x_a, y_a, z_a, x_m, y_m, z_m;
+      SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_x_1);
+      SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_y_1);
+      SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_z_1);
+      Dtype x_x0 = x-x0;
+      Dtype y_y0 = y-y0;
+      Dtype z_z0 = z-z0;
+      Dtype x1_x = x1-x;
+      Dtype y1_y = y1-y;
+      Dtype z1_z = z1-z;
 
-            int x0, y0, z0, x1, y1, z1;
-            Dtype x_a, y_a, z_a, x_m, y_m, z_m;
-            SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_x_1);
-            SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_y_1);
-            SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_z_1);
-            Dtype x_x0 = x-x0;
-            Dtype y_y0 = y-y0;
-            Dtype z_z0 = z-z0;
-            Dtype x1_x = x1-x;
-            Dtype y1_y = y1-y;
-            Dtype z1_z = z1-z;
+      Dtype w_diff_x = 0;
+      Dtype w_diff_y = 0;
+      Dtype w_diff_z = 0;
+      Dtype dx, dy, dz;
+      for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
+        int top_offset = batch_idx*num_samples + sample_idx;
+        const Dtype& t_diff = top_diff[top_offset];
 
-            Dtype w_diff_x = 0;
-            Dtype w_diff_y = 0;
-            Dtype w_diff_z = 0;
-            Dtype dx, dy, dz;
-            for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
-              int top_offset = batch_idx*num_samples + sample_idx;
-              const Dtype& t_diff = top_diff[top_offset];
+        ComputeGradient_cpu(bottom_data, batch_idx,
+            x0, y0, z0, x1, y1, z1,
+            x_a, y_a, z_a, x_m, y_m, z_m,
+            x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
+            dx, dy, dz, field_dim_x, field_dim_y, field_dim_z);
+        w_diff_x += t_diff*dx;
+        w_diff_y += t_diff*dy;
+        w_diff_z += t_diff*dz;
 
-              ComputeGradient_cpu(bottom_data, batch_idx,
-                  x0, y0, z0, x1, y1, z1,
-                  x_a, y_a, z_a, x_m, y_m, z_m,
-                  x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-                  dx, dy, dz, field_dim_x, field_dim_y, field_dim_z);
-              w_diff_x += t_diff*dx;
-              w_diff_y += t_diff*dy;
-              w_diff_z += t_diff*dz;
+        if(output_normal_) {
+          Dtype nx_dx, nx_dy, nx_dz;
+          Dtype ny_dx, ny_dy, ny_dz;
+          Dtype nz_dx, nz_dy, nz_dz;
+          ComputeNormalGradient_cpu(bottom_data, batch_idx,
+              x, y, z,
+              nx_dx, nx_dy, nx_dz,
+              ny_dx, ny_dy, ny_dz,
+              nz_dx, nz_dy, nz_dz,
+              field_dim_x, field_dim_y, field_dim_z);
+          const Dtype& tx_diff = top_normal_diff[3*top_offset+0];
+          const Dtype& ty_diff = top_normal_diff[3*top_offset+1];
+          const Dtype& tz_diff = top_normal_diff[3*top_offset+2];
 
-              if(output_normal_) {
-                Dtype nx_dx, nx_dy, nx_dz;
-                Dtype ny_dx, ny_dy, ny_dz;
-                Dtype nz_dx, nz_dy, nz_dz;
-                ComputeNormalGradient_cpu(bottom_data, batch_idx,
-                    x, y, z,
-                    nx_dx, nx_dy, nx_dz,
-                    ny_dx, ny_dy, ny_dz,
-                    nz_dx, nz_dy, nz_dz,
-                    field_dim_x, field_dim_y, field_dim_z);
-                const Dtype& tx_diff = top_normal_diff[3*top_offset+0];
-                const Dtype& ty_diff = top_normal_diff[3*top_offset+1];
-                const Dtype& tz_diff = top_normal_diff[3*top_offset+2];
+          w_diff_x += tx_diff*nx_dx + ty_diff*ny_dx + tz_diff*nz_dx;
+          w_diff_y += tx_diff*nx_dy + ty_diff*ny_dy + tz_diff*nz_dy;
+          w_diff_z += tx_diff*nx_dz + ty_diff*ny_dz + tz_diff*nz_dz;
+        }
+      } /* batch_size */
 
-                w_diff_x += tx_diff*nx_dx + ty_diff*ny_dx + tz_diff*nz_dx;
-                w_diff_y += tx_diff*nx_dy + ty_diff*ny_dy + tz_diff*nz_dy;
-                w_diff_z += tx_diff*nx_dz + ty_diff*ny_dz + tz_diff*nz_dz;
-              }
-            } /* batch_size */
+      probing_curves_diff[p_offset+0] += w_diff_x;
+      probing_curves_diff[p_offset+1] += w_diff_y;
+      probing_curves_diff[p_offset+2] += w_diff_z;
+    } /* num_samples */
 
-            probing_curves_diff[p_offset+0] += w_diff_x;
-            probing_curves_diff[p_offset+1] += w_diff_y;
-            probing_curves_diff[p_offset+2] += w_diff_z;
-          } /* len_curve */
-        } /* num_curve */
-      } /* num_grids */
-    }
     if (rand()%100 == 0) {
       Dtype amax = caffe_cpu_amax(top[i-1]->count(), top_diff);
       Dtype aavg = caffe_cpu_aavg(top[i-1]->count(), top_diff);
       LOG(INFO) << "FieldProbingLayer::Backward_cpu top_diff max-avg: " << amax << "\t" << aavg;
     }
-  } /* top.size() */
+  } /* bottom.size() */
 
   if (rand()%100 == 0) {
     Dtype amax = caffe_cpu_amax(bottom[0]->count(), bottom[0]->cpu_diff());
