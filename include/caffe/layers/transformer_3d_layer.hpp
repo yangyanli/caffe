@@ -1,8 +1,6 @@
 #ifndef CAFFE_TRANSFORMER_3D_LAYER_HPP_
 #define CAFFE_TRANSFORMER_3D_LAYER_HPP_
 
-#include <boost/random.hpp>
-
 #include "caffe/blob.hpp"
 #include "caffe/layer.hpp"
 #include "caffe/util/rng.hpp"
@@ -35,6 +33,7 @@ class Transformer3DLayer : public Layer<Dtype> {
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
   static const int len_transformation_param = 12;
+  Blob<Dtype> temp_diff_;
 };
 
 }  // namespace caffe

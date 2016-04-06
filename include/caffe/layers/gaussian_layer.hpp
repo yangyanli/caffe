@@ -1,13 +1,8 @@
 #ifndef CAFFE_GAUSSIAN_LAYER_HPP_
 #define CAFFE_GAUSSIAN_LAYER_HPP_
 
-#include <string>
-#include <utility>
-#include <vector>
-
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
-#include "caffe/layer.hpp"
 #include "caffe/proto/caffe.pb.h"
 #include "caffe/layers/neuron_layer.hpp"
 
