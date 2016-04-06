@@ -124,7 +124,9 @@ void Transform3DLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   top_1_shape[0] = top_0_shape[0];
   top[1]->Reshape(top_1_shape);
 
-  top[2]->Reshape(transformations_.shape());
+  if (output_inverse_transformations_) {
+    top[2]->Reshape(transformations_.shape());
+  }
 
   Dtype* transformations_data = transformations_.mutable_cpu_data();
   int num_output = top_0_shape[0];
