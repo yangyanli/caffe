@@ -16,9 +16,9 @@ __global__ void Transformer3DForward(const int num_samples, const int batch_size
       const Dtype& z = bottom_data[offsetx4+2];
 
       const Dtype* t = transformations+batch_idx*len_transformation_param;
-      top_data[offsetx4+0] = t[0]*x + t[1]*y + t[2]*z + t[3];
-      top_data[offsetx4+1] = t[4]*x + t[5]*y + t[6]*z + t[7];
-      top_data[offsetx4+2] = t[8]*x + t[9]*y + t[10]*z + t[11];
+      top_data[offsetx4+0] = (t[0]+1)*x + t[1]*y + t[2]*z + t[3];
+      top_data[offsetx4+1] = t[4]*x + (t[5]+1)*y + t[6]*z + t[7];
+      top_data[offsetx4+2] = t[8]*x + t[9]*y + (t[10]+1)*z + t[11];
 
       batch_idx ++;
     }
@@ -38,6 +38,14 @@ void Transformer3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   Transformer3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_samples), CAFFE_CUDA_NUM_THREADS>>>(num_samples, batch_size,
     transformations, bottom_data, top_data, len_transformation_param);
   CUDA_POST_KERNEL_CHECK;
+
+  if(rand()%100 == 0) {
+    const Dtype* t = bottom[1]->cpu_data()+len_transformation_param*(rand()%batch_size);
+    LOG(INFO) << "\t" << t[0]+1 << " " << t[1] << " " << t[2] << " " << t[3] << std::endl;
+    LOG(INFO) << "\t" << t[4] << " " << t[5]+1 << " " << t[6] << " " << t[7] << std::endl;
+    LOG(INFO) << "\t" << t[8] << " " << t[9] << " " << t[10]+1 << " " << t[11] << std::endl;
+    LOG(INFO) << "\t" << 0.0 << " " << 0.0 << " " << 0.0 << " " << 1.0 << std::endl;
+  }
 }
 
 template <typename Dtype>
@@ -59,9 +67,9 @@ __global__ void Transformer3DBackward(const int num_samples, const int batch_siz
       const Dtype& z_d = top_diff[offsetx4+2];
 
       const Dtype* t = transformations+batch_idx*len_transformation_param;
-      bottom_diff[offsetx4+0] = t[0]*x_d + t[4]*y_d + t[8]*z_d;
-      bottom_diff[offsetx4+1] = t[1]*x_d + t[5]*y_d + t[9]*z_d;
-      bottom_diff[offsetx4+2] = t[2]*x_d + t[6]*y_d + t[10]*z_d;
+      bottom_diff[offsetx4+0] = (t[0]+1)*x_d + t[4]*y_d + t[8]*z_d;
+      bottom_diff[offsetx4+1] = t[1]*x_d + (t[5]+1)*y_d + t[9]*z_d;
+      bottom_diff[offsetx4+2] = t[2]*x_d + t[6]*y_d + (t[10]+1)*z_d;
 
       Dtype* t_diff = temp_diff+(batch_idx*num_samples+sample_idx)*len_transformation_param;
       t_diff[0] = x*x_d;

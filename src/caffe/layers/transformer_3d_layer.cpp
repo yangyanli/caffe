@@ -39,9 +39,9 @@ void Transformer3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const Dtype& z = bottom_data[2];
 
       Dtype* top_data = top[0]->mutable_cpu_data()+offset;
-      top_data[0] = t[0]*x + t[1]*y + t[2]*z + t[3]; 
-      top_data[1] = t[4]*x + t[5]*y + t[6]*z + t[7]; 
-      top_data[2] = t[8]*x + t[9]*y + t[10]*z + t[11]; 
+      top_data[0] = (t[0]+1)*x + t[1]*y + t[2]*z + t[3]; 
+      top_data[1] = t[4]*x + (t[5]+1)*y + t[6]*z + t[7]; 
+      top_data[2] = t[8]*x + t[9]*y + (t[10]+1)*z + t[11]; 
     } 
   }
 }
@@ -69,9 +69,9 @@ void Transformer3DLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       const Dtype& z_d = top_diff[2];
 
       Dtype* bottom_diff = bottom[0]->mutable_cpu_diff()+offset;
-      bottom_diff[0] = t[0]*x_d + t[4]*y_d + t[8]*z_d;
-      bottom_diff[1] = t[1]*x_d + t[5]*y_d + t[9]*z_d;
-      bottom_diff[2] = t[2]*x_d + t[6]*y_d + t[10]*z_d;
+      bottom_diff[0] = (t[0]+1)*x_d + t[4]*y_d + t[8]*z_d;
+      bottom_diff[1] = t[1]*x_d + (t[5]+1)*y_d + t[9]*z_d;
+      bottom_diff[2] = t[2]*x_d + t[6]*y_d + (t[10]+1)*z_d;
       
       t_diff[0] += x*x_d;
       t_diff[1] += y*x_d;

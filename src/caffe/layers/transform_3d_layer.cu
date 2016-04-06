@@ -70,6 +70,9 @@ template <typename Dtype>
 void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   ForwardLabel(bottom[1], top[1]);
+  if (output_inverse_transformations_) {
+    ForwardInverseTransformations(&transformations_, top[1]);
+  }
 
   const Dtype* bottom_data = bottom[0]->gpu_data();
   const vector<int>& bottom_shape = bottom[0]->shape();
