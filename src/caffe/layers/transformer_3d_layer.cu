@@ -128,6 +128,8 @@ void Transformer3DLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top,
   Transformer3DBackward<Dtype><<<CAFFE_GET_BLOCKS(num_params), CAFFE_CUDA_NUM_THREADS>>>(num_params, num_samples,
     temp_diff, transformations_diff);
   CUDA_POST_KERNEL_CHECK;
+
+  caffe_gpu_scal(num_params, Dtype(1.0/num_samples), transformations_diff);
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(Transformer3DLayer);

@@ -87,6 +87,7 @@ void Transformer3DLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top,
       t_diff[11] += z_d;
     }
   }
+  caffe_scal(batch_size*len_transformation_param, Dtype(1.0/num_samples), bottom[1]->mutable_cpu_diff());
 }
 
 
