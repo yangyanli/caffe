@@ -131,6 +131,9 @@ void CurvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, cons
       LOG(INFO) << "CurvolutionLayer::Backward_gpu (" << num_channel_ << ") top_diff max-avg: " << amax << "\t" << aavg;
     }
   } /* top.size() */
+  Dtype scaler = 1.0/(batch_size*top.size());
+  caffe_gpu_scal(num_all_curves*len_dot, scaler, this->blobs_[0]->mutable_gpu_diff());
+  caffe_gpu_scal(num_all_curves, scaler, this->blobs_[1]->mutable_gpu_diff());
 
   if(rand()%100 == 0){
     Dtype amax, aavg;

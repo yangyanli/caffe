@@ -144,6 +144,10 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
       LOG(INFO) << "CurvolutionLayer::Backward_cpu (" << num_channel_ << ") top_diff max-avg: " << amax << "\t" << aavg;
     }
   } /* top.size() */
+  
+  Dtype scaler = 1.0/(batch_size*top.size());
+  caffe_scal(num_all_curves*len_dot, scaler, this->blobs_[0]->mutable_cpu_diff());
+  caffe_scal(num_all_curves, scaler, this->blobs_[1]->mutable_cpu_diff());
 
   if (rand()%100 == 0) {
     Dtype amax = caffe_cpu_amax(this->blobs_[0]->count(), this->blobs_[0]->cpu_diff());

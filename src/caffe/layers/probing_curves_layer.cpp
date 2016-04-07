@@ -71,6 +71,7 @@ void ProbingCurvesLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, co
     const Dtype* top_diff = top[0]->cpu_diff()+weight_count*i;
     caffe_add(weight_count, top_diff, weight_diff, weight_diff);
   }
+  caffe_scal(weight_count, Dtype(1.0/batch_size_), weight_diff);
 }
 
 template<typename Dtype>

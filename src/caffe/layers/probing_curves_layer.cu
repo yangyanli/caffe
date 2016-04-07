@@ -25,6 +25,7 @@ void ProbingCurvesLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, co
     const Dtype* top_diff = top[0]->gpu_diff()+weight_count*i;
     caffe_gpu_add(weight_count, top_diff, weight_diff, weight_diff);
   }
+  caffe_gpu_scal(weight_count, Dtype(1.0/batch_size_), weight_diff);
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(ProbingCurvesLayer);
