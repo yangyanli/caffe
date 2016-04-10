@@ -271,7 +271,7 @@ void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
     }
   } /* top.size() */
 
-  caffe_gpu_scal(bottom[0]->count(), Dtype(1.0/(batch_size*(bottom.size()-1))), bottom[0]->mutable_gpu_diff()); 
+  caffe_gpu_scal(bottom[0]->count(), Dtype(1.0/(bottom.size()-1)), bottom[0]->mutable_gpu_diff()); 
 
   if (rand()%100 == 0) {
     Dtype amax, aavg;
