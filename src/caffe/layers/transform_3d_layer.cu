@@ -40,9 +40,9 @@ __global__ void Transform3DForward(const int num_grids, const int grid_dim, cons
         Dtype yy = y+0.5-c_offset;
         Dtype zz = z+0.5-c_offset;
 
-        Dtype bx = a*xx + b*yy + c*zz + tx + c_offset;
-        Dtype by = d*xx + e*yy + f*zz + ty + c_offset;
-        Dtype bz = g*xx + h*yy + i*zz + tz + c_offset;
+        Dtype bx = a*xx + b*yy + c*zz + tx + c_offset - 0.5;
+        Dtype by = d*xx + e*yy + f*zz + ty + c_offset - 0.5;
+        Dtype bz = g*xx + h*yy + i*zz + tz + c_offset - 0.5;
 
         if(bx >= 0 && bx < grid_dim
             && by >= 0 && by < grid_dim
@@ -69,23 +69,26 @@ __global__ void Transform3DForward(const int num_grids, const int grid_dim, cons
 template <typename Dtype>
 void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
-  ForwardLabel(bottom[1], top[1]);
+  int field_num = bottom.size()-1;
+  ForwardLabel(bottom[field_num+1], top[field_num+1]);
   if (output_inverse_transformations_) {
-    ForwardInverseTransformations(&transformations_, top[2]);
+    ForwardInverseTransformations(&transformations_, top[field_num+2]);
   }
 
-  const Dtype* bottom_data = bottom[0]->gpu_data();
-  const vector<int>& bottom_shape = bottom[0]->shape();
-  Dtype* top_data = top[0]->mutable_gpu_data();
-  const int batch_size = bottom_shape[0];
-  const int grid_dim = bottom_shape[1];
-  const int num_grids = bottom[0]->count(1);
-  const Dtype* transformations_data = transformations_.gpu_data();
-
-  // NOLINT_NEXT_LINE(whitespace/operators)
-  Transform3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, grid_dim, batch_size, num_transformations_,
-      pad_value_, bottom_data, transformations_data, top_data, len_transformation_param);
-  CUDA_POST_KERNEL_CHECK;
+  for (int i = 0; i < field_num; ++ i) {
+    const Dtype* bottom_data = bottom[i]->gpu_data();
+    const vector<int>& bottom_shape = bottom[i]->shape();
+    Dtype* top_data = top[i]->mutable_gpu_data();
+    const int batch_size = bottom_shape[0];
+    const int grid_dim = bottom_shape[1];
+    const int num_grids = bottom[i]->count(1);
+    const Dtype* transformations_data = transformations_.gpu_data();
+  
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    Transform3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, grid_dim, batch_size, num_transformations_,
+        pad_value_, bottom_data, transformations_data, top_data, len_transformation_param);
+    CUDA_POST_KERNEL_CHECK;
+  }
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(Transform3DLayer);
