@@ -12,26 +12,38 @@ void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, co
   int batch_size = bottom[1]->shape()[0];
   CHECK_EQ(probing_curves_shape[0], batch_size) << "Probing curves must have the same batch size as input field(s).";
 
+  std::vector<int> field_shape = bottom[1]->shape();
+  CHECK(field_shape.size() == 4 || field_shape.size() == 5) << "GradientFieldLayer supports only 4D or 5D data.";
+  if (field_shape.size() == 5) {
+    field_shape.pop_back();
+  }
   for (int bottom_id = 2; bottom_id < bottom.size(); ++bottom_id) {
-    CHECK(bottom[1]->shape() == bottom[bottom_id]->shape())
-        << "All input fields must have the same shape.";
+    std::vector<int> field_shape_i = bottom[bottom_id]->shape(); 
+    CHECK(field_shape_i.size() == 4 || field_shape_i.size() == 5) << "GradientFieldLayer supports only 4D or 5D data.";
+    if (field_shape_i.size() == 5) {
+      field_shape_i.pop_back();
+    }
+ 
+    CHECK(field_shape == field_shape_i) << "All input fields must have the same shape.";
   }
 }
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  const vector<int>& probing_curves_shape = bottom[0]->shape();
-  vector<int> top_shape = probing_curves_shape;
-  top_shape.back() = 1;
-
   for (int i = 1; i < bottom.size(); ++ i) {
+    const std::vector<int>& field_shape = bottom[i]->shape();
+    int field_channels = (field_shape.size() == 5)?(field_shape.back()):(1);
+    const vector<int>& probing_curves_shape = bottom[0]->shape();
+    std::vector<int> top_shape = probing_curves_shape;
+    top_shape.back() = field_channels;
+
     top[i-1]->Reshape(top_shape);
   }
 }
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  const vector<int>& field_shape = bottom[1]->shape();
+  std::vector<int> field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
   int field_dim_x = field_shape[1];
   int field_dim_y = field_shape[2];
@@ -47,7 +59,8 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
     const Dtype* probing_curves = bottom[0]->cpu_data()+probing_curves_size*(i-1);
     const Dtype* bottom_data = bottom[i]->cpu_data();
     Dtype* top_data = top[i-1]->mutable_cpu_data();
-
+    field_shape = bottom[i]->shape();
+    int field_channels = (field_shape.size() == 5)?(field_shape.back()):(1);
     for (int sample_idx = 0; sample_idx < num_samples; ++ sample_idx) {
       int p_offset = sample_idx * 4;
       Dtype x = probing_curves[p_offset+0];
@@ -67,9 +80,9 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
       for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
         int n_offset = batch_idx * num_samples;
         int top_offset = n_offset + sample_idx;
-        top_data[top_offset] = Interpolate_cpu(bottom_data, batch_idx,
-            x0, y0, z0, x1, y1, z1, x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-            field_dim_x, field_dim_y, field_dim_z);
+        Dtype* t_data = top_data + top_offset*field_channels;
+        Interpolate_cpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1, x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
+          field_dim_x, field_dim_y, field_dim_z, t_data, field_channels);
       } /* batch_size */
     } /* num_samples */
   } /* bottom.size() */
@@ -78,8 +91,10 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   caffe_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_cpu_diff());
+  if (!propagate_down[0]) 
+    return;
 
-  const vector<int>& field_shape = bottom[1]->shape();
+  std::vector<int> field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
   int field_dim_x = field_shape[1];
   int field_dim_y = field_shape[2];
@@ -91,14 +106,13 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
   int num_samples = probing_curves_size/4;
 
   for (int i = 1; i < bottom.size(); ++i) {
-    if (!(propagate_down[0] || propagate_down[i])) 
-      continue;
-
     const Dtype* probing_curves = bottom[0]->cpu_data()+probing_curves_size*(i-1);
     Dtype* probing_curves_diff = bottom[0]->mutable_cpu_diff()+probing_curves_size*(i-1);
     const Dtype* top_diff = top[i-1]->cpu_diff();
- 
     const Dtype* bottom_data = bottom[i]->cpu_data();
+    field_shape = bottom[i]->shape();
+    int field_channels = (field_shape.size() == 5)?(field_shape.back()):(1);
+    Dtype* gradients = new Dtype[field_channels*3];
     for (int sample_idx = 0; sample_idx < num_samples; ++ sample_idx) {
       int p_offset = sample_idx * 4;
 
@@ -121,25 +135,25 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
       Dtype w_diff_x = 0;
       Dtype w_diff_y = 0;
       Dtype w_diff_z = 0;
-      Dtype dx, dy, dz;
       for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
         int top_offset = batch_idx*num_samples + sample_idx;
         const Dtype& t_diff = top_diff[top_offset];
 
-        ComputeGradient_cpu(bottom_data, batch_idx,
-            x0, y0, z0, x1, y1, z1,
-            x_a, y_a, z_a, x_m, y_m, z_m,
-            x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-            dx, dy, dz, field_dim_x, field_dim_y, field_dim_z);
-        w_diff_x += t_diff*dx;
-        w_diff_y += t_diff*dy;
-        w_diff_z += t_diff*dz;
+        ComputeGradient_cpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1,
+          x_a, y_a, z_a, x_m, y_m, z_m, x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
+          field_dim_x, field_dim_y, field_dim_z, gradients, field_channels);
+        for (int i = 0; i < field_channels; ++ i) {
+          w_diff_x += t_diff*gradients[3*i+0];
+          w_diff_y += t_diff*gradients[3*i+1];
+          w_diff_z += t_diff*gradients[3*i+2];
+        }
       } /* batch_size */
 
       probing_curves_diff[p_offset+0] += w_diff_x;
       probing_curves_diff[p_offset+1] += w_diff_y;
       probing_curves_diff[p_offset+2] += w_diff_z;
     } /* num_samples */
+    delete gradients;
 
     if (rand()%100 == 0) {
       Dtype amax = caffe_cpu_amax(top[i-1]->count(), top_diff);

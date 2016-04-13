@@ -7,7 +7,7 @@ namespace caffe {
 template <typename Dtype>
 __global__ void FieldProbingForward(const int num_samples, const int batch_size,
     const int field_dim_x, const int field_dim_y, const int field_dim_z, const int field_dim_x_1, const int field_dim_y_1, const int field_dim_z_1,
-    const Dtype* probing_curves, const Dtype* bottom_data, Dtype* top_data) {
+    const Dtype* probing_curves, const Dtype* bottom_data, Dtype* top_data, const int field_channels) {
   int sample_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread for each sample
   if(sample_idx < num_samples) {
@@ -28,7 +28,8 @@ __global__ void FieldProbingForward(const int num_samples, const int batch_size,
     Dtype z1_z = z1-z;
     int top_count = num_samples*batch_size;
     for (int top_offset = sample_idx, batch_idx = 0; top_offset < top_count; top_offset += num_samples) {
-      top_data[top_offset] = Interpolate_gpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1, x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, field_dim_x, field_dim_y, field_dim_z);
+      Interpolate_gpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1,
+        x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, field_dim_x, field_dim_y, field_dim_z, top_data+top_offset*field_channels);
       batch_idx ++;
     }
   }
@@ -36,7 +37,7 @@ __global__ void FieldProbingForward(const int num_samples, const int batch_size,
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  const vector<int>& field_shape = bottom[1]->shape();
+  std::vector<int> field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
   int field_dim_x = field_shape[1];
   int field_dim_y = field_shape[2];
@@ -48,13 +49,15 @@ void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, c
   int num_samples = probing_curves_size/4;
 
   for (int i = 1; i < bottom.size(); ++ i) {
+    field_shape = bottom[i]->shape();
     const Dtype* probing_curves = bottom[0]->gpu_data() + probing_curves_size*(i-1);
     const Dtype* bottom_data = bottom[i]->gpu_data();
     Dtype* top_data = top[i-1]->mutable_gpu_data();
+    int field_channels = (field_shape.size() == 5)?(field_shape.back()):(1);
     // NOLINT_NEXT_LINE(whitespace/operators)
     FieldProbingForward<Dtype><<<CAFFE_GET_BLOCKS(num_samples), CAFFE_CUDA_NUM_THREADS>>>(num_samples, batch_size,
       field_dim_x, field_dim_y, field_dim_z, field_dim_x_1, field_dim_y_1, field_dim_z_1,
-      probing_curves, bottom_data, top_data);
+      probing_curves, bottom_data, top_data, field_channels);
     CUDA_POST_KERNEL_CHECK;
   } /* bottom.size() */
 }
@@ -62,7 +65,7 @@ void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, c
 template <typename Dtype>
 __global__ void FieldProbingBackward(const int num_samples, const int batch_size,
     const int field_dim_x, const int field_dim_y, const int field_dim_z, const int field_dim_x_1, const int field_dim_y_1, const int field_dim_z_1,
-    const Dtype* probing_curves, const Dtype* bottom_data, const Dtype* top_diff, Dtype* probing_curves_diff) {
+    const Dtype* probing_curves, const Dtype* bottom_data, const Dtype* top_diff, Dtype* probing_curves_diff, const int field_channels) {
   int sample_idx = blockDim.x*blockIdx.x + threadIdx.x;
 
   // One thread for each sample
@@ -87,18 +90,21 @@ __global__ void FieldProbingBackward(const int num_samples, const int batch_size
     Dtype w_diff_x = 0;
     Dtype w_diff_y = 0;
     Dtype w_diff_z = 0;
-    Dtype dx, dy, dz;
+    Dtype* gradients = new Dtype[field_channels*3];
     int top_count = num_samples*batch_size;
     for (int top_offset = sample_idx, batch_idx = 0; top_offset < top_count; top_offset += num_samples) {
     ComputeGradient_gpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1, x_a, y_a, z_a, x_m, y_m, z_m,
-      x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, dx, dy, dz, field_dim_x, field_dim_y, field_dim_z);
+      x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, field_dim_x, field_dim_y, field_dim_z, gradients, field_channels);
       const Dtype& t_diff = top_diff[top_offset];
-      w_diff_x += t_diff*dx;
-      w_diff_y += t_diff*dy;
-      w_diff_z += t_diff*dz;
+      for (int i = 0; i < field_channels; ++ i) {
+        w_diff_x += t_diff*gradients[3*i+0];
+        w_diff_y += t_diff*gradients[3*i+1];
+        w_diff_z += t_diff*gradients[3*i+2];
+      }
 
       batch_idx ++;
     }
+    delete gradients;
     probing_curves_diff[p_offset+0] += w_diff_x;
     probing_curves_diff[p_offset+1] += w_diff_y;
     probing_curves_diff[p_offset+2] += w_diff_z;
@@ -107,7 +113,11 @@ __global__ void FieldProbingBackward(const int num_samples, const int batch_size
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  const vector<int>& field_shape = bottom[1]->shape();
+  caffe_gpu_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_gpu_diff());
+  if (!propagate_down[0])
+    return;
+
+  std::vector<int> field_shape = bottom[1]->shape();
   int batch_size = field_shape[0];
   int field_dim_x = field_shape[1];
   int field_dim_y = field_shape[2];
@@ -118,20 +128,18 @@ void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
   int probing_curves_size = bottom[0]->count(1);
   int num_samples = probing_curves_size/4;
 
-  caffe_gpu_set(bottom[0]->count(), Dtype(0), bottom[0]->mutable_gpu_diff());
-
   for (int i = 1; i < bottom.size(); ++i) {
     const Dtype* probing_curves = bottom[0]->gpu_data()+probing_curves_size*(i-1);
     Dtype* probing_curves_diff = bottom[0]->mutable_gpu_diff()+probing_curves_size*(i-1);
     const Dtype* top_diff = top[i-1]->gpu_diff();
-    if (propagate_down[0] || propagate_down[i]) {
-      const Dtype* bottom_data = bottom[i]->gpu_data();
-      // NOLINT_NEXT_LINE(whitespace/operators)
-      FieldProbingBackward<Dtype><<<CAFFE_GET_BLOCKS(num_samples), CAFFE_CUDA_NUM_THREADS>>>(num_samples, batch_size,
-        field_dim_x, field_dim_y, field_dim_z, field_dim_x_1, field_dim_y_1, field_dim_z_1,
-        probing_curves, bottom_data, top_diff, probing_curves_diff);
-      CUDA_POST_KERNEL_CHECK;
-    }
+    const Dtype* bottom_data = bottom[i]->gpu_data();
+    field_shape = bottom[i]->shape();
+    int field_channels = (field_shape.size() == 5)?(field_shape.back()):(1);
+    // NOLINT_NEXT_LINE(whitespace/operators)
+    FieldProbingBackward<Dtype><<<CAFFE_GET_BLOCKS(num_samples), CAFFE_CUDA_NUM_THREADS>>>(num_samples, batch_size,
+      field_dim_x, field_dim_y, field_dim_z, field_dim_x_1, field_dim_y_1, field_dim_z_1,
+      probing_curves, bottom_data, top_diff, probing_curves_diff, field_channels);
+    CUDA_POST_KERNEL_CHECK;
     
     if (rand()%100 == 0) {
       Dtype amax, aavg;

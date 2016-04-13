@@ -1,5 +1,5 @@
-#ifndef CAFFE_NORMAL_FIELD_LAYER_HPP_
-#define CAFFE_NORMAL_FIELD_LAYER_HPP_
+#ifndef CAFFE_GRADIENT_FIELD_LAYER_HPP_
+#define CAFFE_GRADIENT_FIELD_LAYER_HPP_
 
 #include "caffe/blob.hpp"
 #include "caffe/common.hpp"
@@ -9,14 +9,14 @@
 namespace caffe {
 
 /**
- * @brief NormalFieldLayer
+ * @brief GradientFieldLayer
  */
 template <typename Dtype>
-class NormalFieldLayer : public Layer<Dtype> {
+class GradientFieldLayer : public Layer<Dtype> {
 public:
-  explicit NormalFieldLayer(const LayerParameter& param)
+  explicit GradientFieldLayer(const LayerParameter& param)
       : Layer<Dtype>(param) {}
-  virtual inline const char* type() const { return "NormalField"; }
+  virtual inline const char* type() const { return "GradientField"; }
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Reshape(const vector<Blob<Dtype>*>& bottom,
@@ -43,4 +43,4 @@ protected:
 
 }  // namespace caffe
 
-#endif  // CAFFE_NORMAL_FIELD_LAYER_HPP_
+#endif  // CAFFE_GRADIENT_FIELD_LAYER_HPP_
