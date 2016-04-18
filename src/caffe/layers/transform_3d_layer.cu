@@ -63,9 +63,9 @@ template <typename Dtype>
 void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   int field_num = bottom.size()-1;
-  ForwardLabel(bottom[field_num+1], top[field_num+1]);
+  ForwardLabel(bottom[field_num], top[field_num]);
   if (output_inverse_transformations_) {
-    ForwardInverseTransformations(&transformations_, top[field_num+2]);
+    ForwardInverseTransformations(&transformations_, top[field_num+1]);
   }
 
   for (int i = 0; i < field_num; ++ i) {

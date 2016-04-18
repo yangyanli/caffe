@@ -117,19 +117,20 @@ void Transform3DLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void Transform3DLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
+  int num_output = bottom[0]->shape()[0]*num_transformations_;
+
   int field_num = bottom.size()-1;
   for (int i = 0; i < field_num; ++ i) {
     std::vector<int> top_shape = bottom[i]->shape();
-    top_shape[0] *= num_transformations_;
+    top_shape[0] = num_output;
     top[i]->Reshape(top_shape);
   }
 
-  int num_output = bottom[0]->shape()[0]*num_transformations_;
   std::vector<int> label_shape(1, num_output);
-  top[field_num+1]->Reshape(label_shape);
+  top[field_num]->Reshape(label_shape);
 
   if (output_inverse_transformations_) {
-    top[field_num+2]->Reshape(transformations_.shape());
+    top[field_num]->Reshape(transformations_.shape());
   }
 
   Dtype* transformations_data = transformations_.mutable_cpu_data();
@@ -165,9 +166,9 @@ template <typename Dtype>
 void Transform3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   int field_num = bottom.size()-1;
-  ForwardLabel(bottom[field_num+1], top[field_num+1]);
+  ForwardLabel(bottom[field_num], top[field_num]);
   if (output_inverse_transformations_) {
-    ForwardInverseTransformations(&transformations_, top[field_num+2]);
+    ForwardInverseTransformations(&transformations_, top[field_num+1]);
   }
 
   for (int i = 0; i < field_num; ++ i) {
