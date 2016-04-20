@@ -209,15 +209,8 @@ void Transform3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                 SnapGrid_cpu(bx, x0, x1, grid_dim_1);
                 SnapGrid_cpu(by, y0, y1, grid_dim_1);
                 SnapGrid_cpu(bz, z0, z1, grid_dim_1);
-                Dtype x_x0 = bx-x0;
-                Dtype y_y0 = by-y0;
-                Dtype z_z0 = bz-z0;
-                Dtype x1_x = x1-bx;
-                Dtype y1_y = y1-by;
-                Dtype z1_z = z1-bz;
-                Interpolate_cpu(bottom_data, b_batch_idx, x0, y0, z0, x1, y1, z1,
-                  x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, grid_dim, grid_dim, grid_dim,
-                  t_data, field_channels);
+                Interpolate_cpu(bottom_data, b_batch_idx, bx, by, bz, x0, y0, z0, x1, y1, z1,
+                  grid_dim, t_data, field_channels);
               } else {
                 caffe_set(field_channels, pad_value_, t_data);
               }

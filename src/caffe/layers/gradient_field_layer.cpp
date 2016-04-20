@@ -40,30 +40,23 @@ void GradientFieldLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, 
     int x0, x1;
     Dtype x_a, x_m;
     SnapGrid_cpu(x, x0, x1, x_a, x_m, grid_dim_1);
-    Dtype x_x0 = x-x0;
-    Dtype x1_x = x1-x;
     for (int j = 0; j < grid_dim; ++ j) {
       offset[2] = j;
       Dtype y = j + 0.5;
       int y0, y1;
       Dtype y_a, y_m;
       SnapGrid_cpu(y, y0, y1, y_a, y_m, grid_dim_1);
-      Dtype y_y0 = y-y0;
-      Dtype y1_y = y1-y;
       for (int k = 0; k < grid_dim; ++ k) {
         offset[3] = k;
         Dtype z = k + 0.5;
         int z0, z1;
         Dtype z_a, z_m;
         SnapGrid_cpu(z, z0, z1, z_a, z_m, grid_dim_1);
-        Dtype z_z0 = z-z0;
-        Dtype z1_z = z1-z;
         for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) { 
           offset[0] = batch_idx;
           Dtype* t_data = top_data + top[0]->offset(offset);
-          ComputeGradient_cpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1,
-            x_a, y_a, z_a, x_m, y_m, z_m, x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-            grid_dim, grid_dim, grid_dim, t_data, field_channels);
+          ComputeGradient_cpu(bottom_data, batch_idx, x, y, z, x0, y0, z0, x1, y1, z1,
+            x_a, y_a, z_a, x_m, y_m, z_m, grid_dim, t_data, field_channels);
           Normalize_cpu(t_data);
         } /* batch_size */
       } /* z */

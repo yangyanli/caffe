@@ -19,19 +19,25 @@ namespace caffe {
   
   template<typename Dtype>
   void Interpolate_cpu(const Dtype* df, const int batch_idx,
+    const Dtype x, const Dtype y, const Dtype z,
     const int x0, const int y0, const int z0,
     const int x1, const int y1, const int z1,
-    const Dtype x_x0, const Dtype y_y0, const Dtype z_z0,
-    const Dtype x1_x, const Dtype y1_y, const Dtype z1_z,
-    const int field_dim_x, const int field_dim_y, const int field_dim_z, Dtype* values, const int channels = 1) {
-    int offset_000 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_001 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_010 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_011 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z1)*channels;
-    int offset_100 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_101 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_110 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_111 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z1)*channels;
+    const int field_dim, Dtype* values, const int channels = 1) {
+    Dtype x_x0 = x-x0;
+    Dtype y_y0 = y-y0;
+    Dtype z_z0 = z-z0;
+    Dtype x1_x = x1-x;
+    Dtype y1_y = y1-y;
+    Dtype z1_z = z1-z;
+
+    int offset_000 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_001 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_010 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_011 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z1)*channels;
+    int offset_100 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_101 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_110 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_111 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z1)*channels;
 
     for (int i = 0; i < channels; ++ i) { 
       Dtype v000 = df[offset_000];
@@ -85,22 +91,27 @@ namespace caffe {
   
   template<typename Dtype>
   void ComputeGradient_cpu(const Dtype* df, const int batch_idx,
+    const Dtype x, const Dtype y, const Dtype z,
     const int x0, const int y0, const int z0,
     const int x1, const int y1, const int z1,
     const Dtype x_a, const Dtype y_a, const Dtype z_a,
     const Dtype x_m, const Dtype y_m, const Dtype z_m,
-    const Dtype x_x0, const Dtype y_y0, const Dtype z_z0,
-    const Dtype x1_x, const Dtype y1_y, const Dtype z1_z,
-    const int field_dim_x, const int field_dim_y, const int field_dim_z,
-    Dtype* gradients, int channels = 1) {
-    int offset_000 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_001 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_010 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_011 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z1)*channels;
-    int offset_100 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_101 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_110 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_111 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z1)*channels;
+    const int field_dim, Dtype* gradients, int channels = 1) {
+    Dtype x_x0 = x-x0;
+    Dtype y_y0 = y-y0;
+    Dtype z_z0 = z-z0;
+    Dtype x1_x = x1-x;
+    Dtype y1_y = y1-y;
+    Dtype z1_z = z1-z;
+
+    int offset_000 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_001 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_010 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_011 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z1)*channels;
+    int offset_100 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_101 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_110 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_111 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z1)*channels;
                 
     for (int i = 0; i < channels; ++ i) {
       Dtype v000 = df[offset_000];
@@ -163,6 +174,7 @@ namespace caffe {
       v101*x_x0*y1_y*z_z0 +
       v011*x1_x*y_y0*z_z0 +
       v110*x_x0*y_y0*z1_z +
+  required float max_chop_radius = 2 [default = 0.50];
       v111*x_x0*y_y0*z_z0;
       */
 
@@ -180,23 +192,15 @@ namespace caffe {
   template<typename Dtype>
   void ComputeGradient_cpu(const Dtype* df, const int batch_idx,
     Dtype& x, Dtype& y, Dtype& z,
-    const int field_dim_x, const int field_dim_y, const int field_dim_z,
-    Dtype* gradients, const int channels = 1) {
+    const int field_dim, Dtype* gradients, const int channels = 1) {
     int x0, y0, z0, x1, y1, z1;
     Dtype x_a, y_a, z_a, x_m, y_m, z_m;
-    SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_x-1);
-    SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_y-1);
-    SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_z-1);
-    Dtype x_x0 = x-x0;
-    Dtype y_y0 = y-y0;
-    Dtype z_z0 = z-z0;
-    Dtype x1_x = x1-x;
-    Dtype y1_y = y1-y;
-    Dtype z1_z = z1-z;
+    SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim-1);
+    SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim-1);
+    SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim-1);
   
-    ComputeGradient_cpu(df, batch_idx, x0, y0, z0, x1, y1, z1, x_a, y_a, z_a, x_m, y_m, z_m,
-      x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, field_dim_x, field_dim_y, field_dim_z,
-      gradients, channels);
+    ComputeGradient_cpu(df, batch_idx, x, y, z, x0, y0, z0, x1, y1, z1,
+        x_a, y_a, z_a, x_m, y_m, z_m, field_dim, gradients, channels);
   }
   
   template<typename Dtype>
@@ -245,20 +249,25 @@ namespace caffe {
   
   template<typename Dtype>
   __device__ void Interpolate_gpu(const Dtype* df, const int batch_idx,
+    const Dtype x, const Dtype y, const Dtype z,
     const int x0, const int y0, const int z0,
     const int x1, const int y1, const int z1,
-    const Dtype x_x0, const Dtype y_y0, const Dtype z_z0,
-    const Dtype x1_x, const Dtype y1_y, const Dtype z1_z,
-    const int field_dim_x, const int field_dim_y, const int field_dim_z,
-    Dtype* values, const int channels = 1) {
-    int offset_000 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_001 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_010 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_011 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z1)*channels;
-    int offset_100 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_101 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_110 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_111 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z1)*channels;
+    const int field_dim, Dtype* values, const int channels = 1) {
+    Dtype x_x0 = x-x0;
+    Dtype y_y0 = y-y0;
+    Dtype z_z0 = z-z0;
+    Dtype x1_x = x1-x;
+    Dtype y1_y = y1-y;
+    Dtype z1_z = z1-z;
+
+    int offset_000 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_001 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_010 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_011 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z1)*channels;
+    int offset_100 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_101 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_110 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_111 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z1)*channels;
 
     for (int i = 0; i < channels; ++ i) {
       Dtype v000 = df[offset_000];
@@ -312,22 +321,27 @@ namespace caffe {
   
   template<typename Dtype>
   __device__ void ComputeGradient_gpu(const Dtype* df, const int batch_idx,
+    const Dtype x, const Dtype y, const Dtype z,
     const int x0, const int y0, const int z0,
     const int x1, const int y1, const int z1,
     const Dtype x_a, const Dtype y_a, const Dtype z_a,
     const Dtype x_m, const Dtype y_m, const Dtype z_m,
-    const Dtype x_x0, const Dtype y_y0, const Dtype z_z0,
-    const Dtype x1_x, const Dtype y1_y, const Dtype z1_z,
-    const int field_dim_x, const int field_dim_y, const int field_dim_z,
-    Dtype* gradients, const int channels = 1) {
-    int offset_000 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_001 = (((batch_idx * field_dim_x + x0) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_010 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_011 = (((batch_idx * field_dim_x + x0) * field_dim_y + y1) * field_dim_z + z1)*channels;
-    int offset_100 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z0)*channels;
-    int offset_101 = (((batch_idx * field_dim_x + x1) * field_dim_y + y0) * field_dim_z + z1)*channels;
-    int offset_110 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z0)*channels;
-    int offset_111 = (((batch_idx * field_dim_x + x1) * field_dim_y + y1) * field_dim_z + z1)*channels;
+    const int field_dim, Dtype* gradients, const int channels = 1) {
+    Dtype x_x0 = x-x0;
+    Dtype y_y0 = y-y0;
+    Dtype z_z0 = z-z0;
+    Dtype x1_x = x1-x;
+    Dtype y1_y = y1-y;
+    Dtype z1_z = z1-z;
+
+    int offset_000 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_001 = (((batch_idx * field_dim + x0) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_010 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_011 = (((batch_idx * field_dim + x0) * field_dim + y1) * field_dim + z1)*channels;
+    int offset_100 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z0)*channels;
+    int offset_101 = (((batch_idx * field_dim + x1) * field_dim + y0) * field_dim + z1)*channels;
+    int offset_110 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z0)*channels;
+    int offset_111 = (((batch_idx * field_dim + x1) * field_dim + y1) * field_dim + z1)*channels;
                 
     for (int i = 0; i < channels; ++ i) {
       Dtype v000 = df[offset_000];
@@ -345,7 +359,7 @@ namespace caffe {
       Dtype y_ma = y_m-y_a;
       Dtype z_am = z_a-z_m;
       Dtype z_ma = z_m-z_a;
-    
+
       // dx
       gradients[i*3+0] = (
       v000*x_ma*y1_y*z1_z +
@@ -406,24 +420,16 @@ namespace caffe {
   
   template<typename Dtype>
   __device__ void ComputeGradient_gpu(const Dtype* df, const int batch_idx,
-    Dtype& x, Dtype& y, Dtype& z,
-    const int field_dim_x, const int field_dim_y, const int field_dim_z,
+    Dtype& x, Dtype& y, Dtype& z, const int field_dim,
     Dtype* gradients, const int channels = 1) {
     int x0, y0, z0, x1, y1, z1;
     Dtype x_a, y_a, z_a, x_m, y_m, z_m;
-    SnapGrid_gpu(x, x0, x1, x_a, x_m, field_dim_x-1);
-    SnapGrid_gpu(y, y0, y1, y_a, y_m, field_dim_y-1);
-    SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim_z-1);
-    Dtype x_x0 = x-x0;
-    Dtype y_y0 = y-y0;
-    Dtype z_z0 = z-z0;
-    Dtype x1_x = x1-x;
-    Dtype y1_y = y1-y;
-    Dtype z1_z = z1-z;
+    SnapGrid_gpu(x, x0, x1, x_a, x_m, field_dim-1);
+    SnapGrid_gpu(y, y0, y1, y_a, y_m, field_dim-1);
+    SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim-1);
   
-    ComputeGradient_gpu(df, batch_idx, x0, y0, z0, x1, y1, z1, x_a, y_a, z_a, x_m, y_m, z_m,
-      x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, field_dim_x, field_dim_y, field_dim_z,
-      gradients, channels);
+    ComputeGradient_gpu(df, batch_idx, x, y, z, x0, y0, z0, x1, y1, z1,
+        x_a, y_a, z_a, x_m, y_m, z_m, field_dim, gradients, channels);
   }
   
   template<typename Dtype>

@@ -40,15 +40,8 @@ __global__ void Transform3DForward(const int num_grids, const int grid_dim, cons
           SnapGrid_gpu(bx, x0, x1, grid_dim_1);
           SnapGrid_gpu(by, y0, y1, grid_dim_1);
           SnapGrid_gpu(bz, z0, z1, grid_dim_1);
-          Dtype x_x0 = bx-x0;
-          Dtype y_y0 = by-y0;
-          Dtype z_z0 = bz-z0;
-          Dtype x1_x = x1-bx;
-          Dtype y1_y = y1-by;
-          Dtype z1_z = z1-bz;
-          Interpolate_gpu(bottom_data, b_batch_idx, x0, y0, z0, x1, y1, z1,
-            x_x0, y_y0, z_z0, x1_x, y1_y, z1_z, grid_dim, grid_dim, grid_dim,
-            t_data, field_channels);
+          Interpolate_gpu(bottom_data, b_batch_idx, bx, by, bz, x0, y0, z0, x1, y1, z1,
+            grid_dim,t_data, field_channels);
         } else {
           for (int i = 0; i < field_channels; ++ i) {
             t_data[i] = pad_value;

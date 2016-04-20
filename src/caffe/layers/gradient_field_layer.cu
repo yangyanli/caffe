@@ -20,17 +20,11 @@ __global__ void GradientFieldForward(const int num_grids, const int grid_dim, co
     SnapGrid_gpu(x, x0, x1, x_a, x_m, grid_dim_1);
     SnapGrid_gpu(y, y0, y1, y_a, y_m, grid_dim_1);
     SnapGrid_gpu(z, z0, z1, z_a, z_m, grid_dim_1);
-    Dtype x_x0 = x-x0;
-    Dtype y_y0 = y-y0;
-    Dtype z_z0 = z-z0;
-    Dtype x1_x = x1-x;
-    Dtype y1_y = y1-y;
-    Dtype z1_z = z1-z;
+
     for (int batch_idx = 0; batch_idx < batch_size; ++ batch_idx) {
       Dtype* t_data = top_data + (batch_idx*num_grids+grid_idx)*field_channels*3;
-      ComputeGradient_gpu(bottom_data, batch_idx, x0, y0, z0, x1, y1, z1,
-        x_a, y_a, z_a, x_m, y_m, z_m, x_x0, y_y0, z_z0, x1_x, y1_y, z1_z,
-        grid_dim, grid_dim, grid_dim, t_data, field_channels);
+      ComputeGradient_gpu(bottom_data, batch_idx, x, y, z, x0, y0, z0, x1, y1, z1,
+        x_a, y_a, z_a, x_m, y_m, z_m, grid_dim, t_data, field_channels);
       Normalize_gpu(t_data);
     }
   }
