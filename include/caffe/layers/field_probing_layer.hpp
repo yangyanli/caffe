@@ -1,10 +1,7 @@
 #ifndef CAFFE_FIELD_PROBING_LAYER_HPP_
 #define CAFFE_FIELD_PROBING_LAYER_HPP_
 
-#include <boost/random.hpp>
-
 #include "caffe/layer.hpp"
-#include "caffe/util/rng.hpp"
 
 namespace caffe {
 
@@ -36,7 +33,6 @@ protected:
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
-  typedef boost::variate_generator<caffe::rng_t*, boost::uniform_real<Dtype> > VariateGenerator;
   void InitializeFilters(Blob<Dtype>* blob, const FieldProbingParameter& param);
 
   int field_num_;
@@ -50,8 +46,11 @@ protected:
   int num_curve_;
   int len_curve_;
 
-  Blob<Dtype> slided_filters_;
+#ifndef CPU_ONLY
+  Blob<Dtype> slided_trans_;
+#endif // !CPU_ONLY
 
+  static const int len_coordinates = 4;
   static const int len_trans_params = 12;
 };
 
