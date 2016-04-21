@@ -61,16 +61,6 @@ void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, co
     this->blobs_[0].reset(new Blob<Dtype>(filters_shape));
     InitializeFilters(this->blobs_[0].get(), param);
   }
-
-#ifndef CPU_ONLY
-  std::vector<int> slided_trans_shape;
-  slided_trans_shape.push_back(num_curve_);
-  slided_trans_shape.push_back(len_curve_);
-  slided_trans_shape.push_back(batch_size_);
-  slided_trans_shape.push_back(len_trans_params);
-  slided_trans_.Reshape(slided_trans_shape);
-
-#endif // !CPU_ONLY
 }
 
 template<typename Dtype>
@@ -81,6 +71,7 @@ void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
   top_shape.push_back(num_sliding_);
   top_shape.push_back(num_curve_);
   top_shape.push_back(len_curve_);
+
   top_shape.push_back(0);
   for (int i = 0; i < field_num_; ++i) {
     const std::vector<int>& field_shape = bottom[i]->shape();
@@ -148,6 +139,7 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
         } /* k */
       } /* j */
     } /* i */
+
   } /* sample_idx */
 }
 
@@ -197,8 +189,9 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
           w_diff_x = w_diff_y = w_diff_z = 0;
 
           for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
+            int trans_offset = batch_idx * len_trans_params;
             if (transform_) {
-              const Dtype* t = trans + batch_idx * len_trans_params;
+              const Dtype* t = trans + trans_offset;
               x = t[0] * sx + t[1] * sy + t[2] * sz + t[3];
               y = t[4] * sx + t[5] * sy + t[6] * sz + t[7];
               z = t[8] * sx + t[9] * sy + t[10] * sz + t[11];
@@ -228,28 +221,15 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
             }
 
             if (transform_) {
-              const Dtype* t = trans + batch_idx * len_trans_params;
-              Dtype t_diff_x = t[0]*diff_x + t[4]*diff_y + t[8]*diff_z;
-              Dtype t_diff_y = t[1]*diff_x + t[5]*diff_y + t[9]*diff_z;
-              Dtype t_diff_z = t[2]*diff_x + t[6]*diff_y + t[10]*diff_z;
+              const Dtype* t = trans + trans_offset;
+              w_diff_x = t[0]*diff_x + t[4]*diff_y + t[8]*diff_z;
+              w_diff_y = t[1]*diff_x + t[5]*diff_y + t[9]*diff_z;
+              w_diff_z = t[2]*diff_x + t[6]*diff_y + t[10]*diff_z;
 
-              Dtype* t_diff = trans_diff + batch_idx * len_trans_params;
-              t_diff[0] += x*diff_x;
-              t_diff[1] += y*diff_x;
-              t_diff[2] += z*diff_x;
-              t_diff[3] += diff_x;
-              t_diff[4] += x*diff_y;
-              t_diff[5] += y*diff_y;
-              t_diff[6] += z*diff_y;
-              t_diff[7] += diff_y;
-              t_diff[8] += x*diff_z;
-              t_diff[9] += y*diff_z;
-              t_diff[10] += z*diff_z;
-              t_diff[11] += diff_z;
-
-              w_diff_x += t_diff_x;
-              w_diff_x += t_diff_y;
-              w_diff_x += t_diff_z;
+              Dtype* t_diff = trans_diff + trans_offset;
+              t_diff[0] += x*diff_x; t_diff[1] += y*diff_x; t_diff[2] += z*diff_x; t_diff[3] += diff_x;
+              t_diff[4] += x*diff_y; t_diff[5] += y*diff_y; t_diff[6] += z*diff_y; t_diff[7] += diff_y;
+              t_diff[8] += x*diff_z; t_diff[9] += y*diff_z; t_diff[10] += z*diff_z; t_diff[11] += diff_z;
             } else {
               w_diff_x += diff_x;
               w_diff_x += diff_y;
@@ -286,7 +266,8 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
     }
     if (transform_) {
       Dtype amax = caffe_cpu_amax(bottom[field_num_]->count(), bottom[field_num_]->cpu_diff());
-      Dtype aavg = caffe_cpu_aavg(bottom[field_num_]->count(), bottom[field_num_]->cpu_diff());
+      Dtype aavg = caffe_cpu_aavg(bottom[field_num_]->count(),
+          bottom[field_num_]->cpu_diff());
       LOG(INFO) << "FieldProbingLayer::Backward_cpu trans_diff max-avg: " << amax << "\t" << aavg;
     }
   }

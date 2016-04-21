@@ -1,14 +1,9 @@
 #ifndef CAFFE_POOLING_4D_LAYER_HPP_
 #define CAFFE_POOLING_4D_LAYER_HPP_
 
-#include <vector>
-
-#include "caffe/blob.hpp"
 #include "caffe/layer.hpp"
-#include "caffe/proto/caffe.pb.h"
 
 namespace caffe {
-
 
 template <typename Dtype>
 class Pooling4DLayer : public Layer<Dtype> {

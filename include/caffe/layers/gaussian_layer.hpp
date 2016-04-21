@@ -1,25 +1,25 @@
 #ifndef CAFFE_GAUSSIAN_LAYER_HPP_
 #define CAFFE_GAUSSIAN_LAYER_HPP_
 
-#include "caffe/blob.hpp"
-#include "caffe/common.hpp"
-#include "caffe/proto/caffe.pb.h"
 #include "caffe/layers/neuron_layer.hpp"
 
 namespace caffe {
 
-template <typename Dtype>
-class GaussianLayer : public NeuronLayer<Dtype> {
- public:
+template<typename Dtype>
+class GaussianLayer: public NeuronLayer<Dtype> {
+public:
   explicit GaussianLayer(const LayerParameter& param)
-      : NeuronLayer<Dtype>(param) {}
+  :NeuronLayer<Dtype>(param) {
+  }
 
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
 
-  virtual inline const char* type() const { return "Gaussian"; }
+  virtual inline const char* type() const {
+    return "Gaussian";
+  }
 
- protected:
+protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
   virtual void Forward_gpu(const vector<Blob<Dtype>*>& bottom,
@@ -28,10 +28,9 @@ class GaussianLayer : public NeuronLayer<Dtype> {
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
   virtual void Backward_gpu(const vector<Blob<Dtype>*>& top,
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
-  
+
   Blob<Dtype> x_and_gaussian_x_;
 };
-
 
 }  // namespace caffe
 

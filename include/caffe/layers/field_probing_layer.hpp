@@ -46,10 +46,6 @@ protected:
   int num_curve_;
   int len_curve_;
 
-#ifndef CPU_ONLY
-  Blob<Dtype> slided_trans_;
-#endif // !CPU_ONLY
-
   static const int len_coordinates = 4;
   static const int len_trans_params = 12;
 };

@@ -1,6 +1,4 @@
-#include <algorithm>
 #include <cfloat>
-#include <vector>
 
 #include "caffe/layers/pooling_4d_layer.hpp"
 #include "caffe/util/math_functions.hpp"

@@ -1,5 +1,3 @@
-#include <vector>
-
 #include "caffe/layers/shuffle_layer.hpp"
 
 namespace caffe {

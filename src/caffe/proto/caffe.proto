@@ -420,6 +420,7 @@ message LayerParameter {
 message CurvolutionParameter {
   required FillerParameter weight_filler = 1; // The filler for the weight
   required FillerParameter bias_filler = 2; // The filler for the bias
+  required bool share_weights = 3 [default = false];
 }
 
 message FieldProbingParameter {

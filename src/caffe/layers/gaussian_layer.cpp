@@ -1,6 +1,3 @@
-#include <algorithm>
-#include <vector>
-
 #include "caffe/layers/gaussian_layer.hpp"
 
 namespace caffe {

@@ -7,7 +7,7 @@ namespace caffe {
 template <typename Dtype>
 __global__ void Transform3DForward(const int num_grids, const int grid_dim, const int batch_size, const int num_transformations,
     const Dtype pad_value, const Dtype* bottom_data, const Dtype* transformations, Dtype* top_data,
-    const int len_transformation_param, const int field_channels) {
+    const int len_trans_params, const int field_channels) {
   const int t_grid_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread for each grid
   if(t_grid_idx < num_grids) {
@@ -27,7 +27,7 @@ __global__ void Transform3DForward(const int num_grids, const int grid_dim, cons
         Dtype yy = y+0.5-c_offset;
         Dtype zz = z+0.5-c_offset;
 
-        const Dtype* t = transformations+t_batch_idx*len_transformation_param;
+        const Dtype* t = transformations+t_batch_idx*len_trans_params;
         Dtype bx = t[0]*xx + t[1]*yy + t[2]*zz + t[3] + c_offset - 0.5;
         Dtype by = t[4]*xx + t[5]*yy + t[6]*zz + t[7] + c_offset - 0.5;
         Dtype bz = t[8]*xx + t[9]*yy + t[10]*zz + t[11] + c_offset - 0.5;
@@ -73,7 +73,7 @@ void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   
     // NOLINT_NEXT_LINE(whitespace/operators)
     Transform3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, grid_dim, batch_size, num_transformations_,
-        pad_value_, bottom_data, transformations_data, top_data, len_transformation_param, field_channels);
+        pad_value_, bottom_data, transformations_data, top_data, len_trans_params, field_channels);
     CUDA_POST_KERNEL_CHECK;
   }
 }

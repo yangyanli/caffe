@@ -59,7 +59,7 @@ class Transform3DLayer : public Layer<Dtype> {
   d e f ty
   g h i tz
   */
-  static const int len_transformation_param = 12;
+  static const int len_trans_params = 12;
   void GetTransformation(Dtype* transformation);
   void GetInverseTransformation(const Dtype* transformation, Dtype* inverse_transformation);
   void GetVariateGenerator(boost::shared_ptr<VariateGenerator>& vg, Dtype min, Dtype max);

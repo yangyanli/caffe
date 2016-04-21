@@ -1,5 +1,3 @@
-#include <vector>
-
 #include "thrust/device_vector.h"
 
 #include "caffe/layers/shuffle_layer.hpp"
