@@ -66,6 +66,7 @@ void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, co
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   std::vector<int> top_shape;
+  top_shape.push_back(batch_size_);
   top_shape.push_back(num_sliding_);
   top_shape.push_back(num_sliding_);
   top_shape.push_back(num_sliding_);
@@ -311,6 +312,7 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
           data[p + 3] = 1.0;
         }
         count++;
+        break;
       }
     }
   }
