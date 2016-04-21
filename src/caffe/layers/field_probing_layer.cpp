@@ -304,10 +304,11 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
           Dtype sample_y = sy + dy * ratio;
           Dtype sample_z = sz + dz * ratio;
 
-          data[count * len_coordinates + 0] = sample_x;
-          data[count * len_coordinates + 1] = sample_y;
-          data[count * len_coordinates + 2] = sample_z;
-          data[count * len_coordinates + 3] = 1.0;
+          int p = (count*len_curve_+l)*len_coordinates;
+          data[p + 0] = sample_x;
+          data[p + 1] = sample_y;
+          data[p + 2] = sample_z;
+          data[p + 3] = 1.0;
         }
         count++;
       }
