@@ -1,6 +1,8 @@
 #ifndef CAFFE_FIELD_PROBING_LAYER_HPP_
 #define CAFFE_FIELD_PROBING_LAYER_HPP_
 
+#include <boost/random.hpp>
+#include "caffe/util/rng.hpp"
 #include "caffe/layer.hpp"
 
 namespace caffe {
@@ -34,6 +36,10 @@ protected:
       const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom);
 
   void InitializeFilters(Blob<Dtype>* blob, const FieldProbingParameter& param);
+  typedef boost::variate_generator<caffe::rng_t*, boost::uniform_real<Dtype> > VariateGenerator;
+  static void ForceInRange(const Dtype x, const Dtype y, const Dtype z, Dtype& xx, Dtype& yy, Dtype& zz);
+  static void SampleOnSphere(Dtype radius, Dtype& x, Dtype& y, Dtype& z, VariateGenerator& variate_generator);
+  static void SampleOnHalfSphere(Dtype radius, Dtype& x, Dtype& y, Dtype& z, VariateGenerator& variate_generator);
 
   int field_num_;
   int batch_size_;

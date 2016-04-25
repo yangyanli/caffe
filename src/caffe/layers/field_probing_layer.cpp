@@ -276,46 +276,168 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldProbingParameter& param) {
+  const int dim_grid = 8;
+  const int num_grid = dim_grid*dim_grid*dim_grid;
+
   Dtype radius = field_dim_ * 0.5 / num_sliding_ + padding_;
-  Dtype min_span = 2 * param.min_span() * radius;
-  Dtype max_span = 2 * param.max_span() * radius;
+  Dtype diameter = 2 * radius;
 
-  boost::uniform_real<Dtype> uniform_distribution_cube_point(-0.5 * radius, 0.5 * radius);
-  typedef boost::variate_generator<caffe::rng_t*, boost::uniform_real<Dtype> > VariateGenerator;
-  VariateGenerator rand_cube_point(caffe_rng(), uniform_distribution_cube_point);
-
-  Dtype* data = blob->mutable_cpu_data();
-  int count = 0;
-  while (count < num_curve_) {
-    Dtype sx = rand_cube_point();
-    Dtype sy = rand_cube_point();
-    Dtype sz = rand_cube_point();
-    while (true) {
-      Dtype ex = rand_cube_point();
-      Dtype ey = rand_cube_point();
-      Dtype ez = rand_cube_point();
-      Dtype dx = ex - sx;
-      Dtype dy = ey - sy;
-      Dtype dz = ez - sz;
-      Dtype length = std::sqrt(dx * dx + dy * dy + dz * dz);
-      if (length <= max_span && length >= min_span) {
-        for (int l = 0; l < len_curve_; ++l) {
-          Dtype ratio = 1.0 * l / (len_curve_ - 1);
-          Dtype sample_x = sx + dx * ratio;
-          Dtype sample_y = sy + dy * ratio;
-          Dtype sample_z = sz + dz * ratio;
-
-          int p = (count*len_curve_+l)*len_coordinates;
-          data[p + 0] = sample_x;
-          data[p + 1] = sample_y;
-          data[p + 2] = sample_z;
-          data[p + 3] = 1.0;
-        }
-        count++;
-        break;
-      }
-    }
+  int num_padding = std::ceil(padding_/diameter*dim_grid);
+  Dtype step = 1.0/(dim_grid+2*num_padding);
+  Dtype min = param.min_span();
+  Dtype max = param.max_span();
+  if (min == max) {
+    max = boost::math::float_next(min);
   }
+
+  Dtype insphere_radius = step/2;
+  boost::uniform_real<Dtype> uniform_distribution_insphere_radius(0, insphere_radius);
+  VariateGenerator rand_insphere_radius(caffe_rng(), uniform_distribution_insphere_radius);
+
+  Dtype ctl_pt_radius = insphere_radius/2;
+  boost::uniform_real<Dtype> uniform_distribution_ctl_pt_radius(0, ctl_pt_radius);
+  VariateGenerator rand_ctl_pt_radius(caffe_rng(), uniform_distribution_ctl_pt_radius);
+
+  boost::uniform_real<Dtype> uniform_distribution_sphere_surface(-1.0, 1.0);
+  VariateGenerator rand_sphere_surface(caffe_rng(), uniform_distribution_sphere_surface);
+  
+  boost::uniform_real<Dtype> uniform_distribution_curve_length(min, max);
+  VariateGenerator rand_curve_length(caffe_rng(), uniform_distribution_curve_length);
+
+  int curve_count = 0;
+  Dtype* data = blob->mutable_cpu_data();
+  while(curve_count < num_curve_) {
+    int idx = rand()%num_grid;
+    int x = idx%dim_grid;
+    int y = (idx/dim_grid)%dim_grid;
+    int z = idx/(dim_grid*dim_grid);
+    Dtype center_x = (x+num_padding+0.5)*step;
+    Dtype center_y = (y+num_padding+0.5)*step;
+    Dtype center_z = (z+num_padding+0.5)*step;
+
+    Dtype std_radius = rand_insphere_radius();
+    Dtype std_x, std_y, std_z;
+    SampleOnSphere(std_radius, std_x, std_y, std_z, rand_sphere_surface);
+
+    Dtype offset_radius = rand_curve_length();
+    Dtype offset_x, offset_y, offset_z;
+    SampleOnSphere(offset_radius, offset_x, offset_y, offset_z, rand_sphere_surface);
+
+    Dtype center_xx = center_x + std_x;
+    Dtype center_yy = center_y + std_y;
+    Dtype center_zz = center_z + std_z;
+
+    Dtype start_x = center_xx + offset_x;
+    Dtype start_y = center_yy + offset_y;
+    Dtype start_z = center_zz + offset_z;
+    ForceInRange(center_xx, center_yy, center_zz, start_x, start_y, start_z);
+
+    Dtype end_x = center_xx - offset_x;
+    Dtype end_y = center_yy - offset_y;
+    Dtype end_z = center_zz - offset_z;
+    ForceInRange(center_xx, center_yy, center_zz, end_x, end_y, end_z);
+
+    for (int l = 0; l < len_curve_; ++ l) {
+      Dtype ratio = 1.0*l/(len_curve_-1);
+      Dtype sample_x = start_x + (end_x-start_x)*ratio;
+      Dtype sample_y = start_y + (end_y-start_y)*ratio;
+      Dtype sample_z = start_z + (end_z-start_z)*ratio;
+
+      std::vector<int> index(3, 0);
+      index[0] = curve_count; index[1] = l;
+      int offset = blob->offset(index);
+      data[offset++] = sample_x*diameter-radius;
+      data[offset++] = sample_y*diameter-radius;
+      data[offset++] = sample_z*diameter-radius;
+    } 
+    curve_count ++;
+  }
+}
+
+template<typename Dtype>
+void FieldProbingLayer<Dtype>::ForceInRange(const Dtype x, const Dtype y, const Dtype z, Dtype& xx, Dtype& yy, Dtype& zz) {
+  if(xx < 0.0) {
+    Dtype offset_x = x-xx;
+    Dtype offset_y = y-yy;
+    Dtype offset_z = z-zz;
+    Dtype ratio = -xx/offset_x;
+    xx = 0.0;
+    yy += ratio*offset_y;
+    zz += ratio*offset_z;
+  }
+  if(yy < 0.0) {
+    Dtype offset_x = x-xx;
+    Dtype offset_y = y-yy;
+    Dtype offset_z = z-zz;
+    Dtype ratio = -yy/offset_y;
+    xx += ratio*offset_x;
+    yy = 0.0;
+    zz += ratio*offset_z;
+  }
+  if(zz < 0.0) {
+    Dtype offset_x = x-xx;
+    Dtype offset_y = y-yy;
+    Dtype offset_z = z-zz;
+    Dtype ratio = -zz/offset_z;
+    xx += ratio*offset_x;
+    yy += ratio*offset_y;
+    zz = 0.0;
+  }
+
+  if(xx > 1.0) {
+    Dtype offset_x = x-xx;
+    Dtype offset_y = y-yy;
+    Dtype offset_z = z-zz;
+    Dtype ratio = (1.0-xx)/offset_x;
+    xx = 1.0;
+    yy += ratio*offset_y;
+    zz += ratio*offset_z;
+  }
+  if(yy > 1.0) {
+    Dtype offset_x = x-xx;
+    Dtype offset_y = y-yy;
+    Dtype offset_z = z-zz;
+    Dtype ratio = (1.0-yy)/offset_y;
+    xx += ratio*offset_x;
+    yy = 1.0;
+    zz += ratio*offset_z;
+  }
+  if(zz > 1.0) {
+    Dtype offset_x = x-xx;
+    Dtype offset_y = y-yy;
+    Dtype offset_z = z-zz;
+    Dtype ratio = (1.0-zz)/offset_z;
+    xx += ratio*offset_x;
+    yy += ratio*offset_y;
+    zz = 1.0;
+  }
+}
+
+// http://mathworld.wolfram.com/SpherePointPicking.html
+template<typename Dtype>
+void FieldProbingLayer<Dtype>::SampleOnSphere(Dtype radius, Dtype& x, Dtype& y, Dtype& z, VariateGenerator& variate_generator) {
+  Dtype x1, x2, sqr_sum;
+  do {
+     x1 = variate_generator();
+     x2 = variate_generator();
+     sqr_sum = x1*x1 + x2*x2;
+  } while (sqr_sum >= 1.0);
+  x = 2*x1*std::sqrt(1-sqr_sum)*radius;
+  y = 2*x2*std::sqrt(1-sqr_sum)*radius;
+  z = (1-2*sqr_sum)*radius;
+}
+
+template<typename Dtype>
+void FieldProbingLayer<Dtype>::SampleOnHalfSphere(Dtype radius, Dtype& x, Dtype& y, Dtype& z, VariateGenerator& variate_generator) {
+  Dtype x1, x2, sqr_sum;
+  do {
+     x1 = variate_generator();
+     x2 = variate_generator();
+     sqr_sum = x1*x1 + x2*x2;
+  } while (sqr_sum >= 1.0 || x1 > 0);
+  x = 2*x1*std::sqrt(1-sqr_sum)*radius;
+  y = 2*x2*std::sqrt(1-sqr_sum)*radius;
+  z = (1-2*sqr_sum)*radius;
 }
 
 #ifdef CPU_ONLY
