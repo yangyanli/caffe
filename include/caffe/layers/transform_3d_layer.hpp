@@ -40,7 +40,6 @@ class Transform3DLayer : public Layer<Dtype> {
   }
 
   void ForwardLabel(Blob<Dtype>* input_labels, Blob<Dtype>* output_labels);
-  void ForwardInverseTransformations(Blob<Dtype>* transformations, Blob<Dtype>* inverse_transformations);
 
   typedef boost::variate_generator<caffe::rng_t*, boost::uniform_real<Dtype> > VariateGenerator;
   boost::shared_ptr<VariateGenerator> rotation_x_;
@@ -66,7 +65,10 @@ class Transform3DLayer : public Layer<Dtype> {
   
   Dtype pad_value_;
   int num_transformations_;
+  int batch_size_;
+  std::string order_;
   Blob<Dtype> transformations_;
+  Blob<Dtype> inverse_transformations_;
   bool output_inverse_transformations_;
 };
 

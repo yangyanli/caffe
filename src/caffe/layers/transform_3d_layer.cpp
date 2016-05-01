@@ -10,6 +10,9 @@
 namespace caffe {
 
 template <typename Dtype>
+const int Transform3DLayer<Dtype>::len_trans_params;
+
+template <typename Dtype>
 void Transform3DLayer<Dtype>::GetVariateGenerator(boost::shared_ptr<VariateGenerator>& vg, Dtype min, Dtype max)
 {
   if (max == min) {
@@ -40,10 +43,28 @@ void Transform3DLayer<Dtype>::GetTransformation(Dtype* transformation) {
   mat4 r_y = glm::rotate(rotation_y, vec3(0.0f, 1.0f, 0.0f));
   mat4 r_z = glm::rotate(rotation_z, vec3(0.0f, 0.0f, 1.0f));
   std::vector<mat4> rotations;
-  rotations.push_back(r_x);
-  rotations.push_back(r_y);
-  rotations.push_back(r_z);
-  std::random_shuffle(rotations.begin(), rotations.end());
+  if(order_.empty()) {
+    rotations.push_back(r_x);
+    rotations.push_back(r_y);
+    rotations.push_back(r_z);
+    std::random_shuffle(rotations.begin(), rotations.end());
+  } else {
+    for (int i = 0; i < order_.length(); ++ i) {
+      switch (tolower(order_[i])) {
+      case 'x':
+        rotations.push_back(r_x);
+        break;
+      case 'y':
+        rotations.push_back(r_y);
+        break;
+      case 'z':
+        rotations.push_back(r_z);
+        break;
+      default:
+        break;
+      }
+    }
+  }
 
   mat4 t = glm::translate(vec3(translation_x, translation_y, translation_z));
   mat4 s = glm::scale(vec3(scaling_x, scaling_y, scaling_z));
@@ -85,27 +106,31 @@ void Transform3DLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   bool is_cube = (field_shape[1] == field_shape[2] && field_shape[1] == field_shape[3]);
   CHECK_EQ(is_cube, true) << "Transform3DLayer supports only cube shape data.";
 
-  const Transform3DParameter& transform_3d_param = this->layer_param_.transform_3d_param();
-  GetVariateGenerator(rotation_x_, transform_3d_param.min_rotation_x(), transform_3d_param.max_rotation_x());
-  GetVariateGenerator(rotation_y_, transform_3d_param.min_rotation_y(), transform_3d_param.max_rotation_y());
-  GetVariateGenerator(rotation_z_, transform_3d_param.min_rotation_z(), transform_3d_param.max_rotation_z());
+  const Transform3DParameter& param = this->layer_param_.transform_3d_param();
+  GetVariateGenerator(rotation_x_, param.min_rotation_x(), param.max_rotation_x());
+  GetVariateGenerator(rotation_y_, param.min_rotation_y(), param.max_rotation_y());
+  GetVariateGenerator(rotation_z_, param.min_rotation_z(), param.max_rotation_z());
   
-  GetVariateGenerator(translation_x_, transform_3d_param.min_translation_x(), transform_3d_param.max_translation_x());
-  GetVariateGenerator(translation_y_, transform_3d_param.min_translation_y(), transform_3d_param.max_translation_y());
-  GetVariateGenerator(translation_z_, transform_3d_param.min_translation_z(), transform_3d_param.max_translation_z());
+  GetVariateGenerator(translation_x_, param.min_translation_x(), param.max_translation_x());
+  GetVariateGenerator(translation_y_, param.min_translation_y(), param.max_translation_y());
+  GetVariateGenerator(translation_z_, param.min_translation_z(), param.max_translation_z());
 
-  GetVariateGenerator(scaling_x_, transform_3d_param.min_scaling_x(), transform_3d_param.max_scaling_x());
-  GetVariateGenerator(scaling_y_, transform_3d_param.min_scaling_y(), transform_3d_param.max_scaling_y());
-  GetVariateGenerator(scaling_z_, transform_3d_param.min_scaling_z(), transform_3d_param.max_scaling_z());
+  GetVariateGenerator(scaling_x_, param.min_scaling_x(), param.max_scaling_x());
+  GetVariateGenerator(scaling_y_, param.min_scaling_y(), param.max_scaling_y());
+  GetVariateGenerator(scaling_z_, param.min_scaling_z(), param.max_scaling_z());
 
-  pad_value_ = transform_3d_param.pad_value();
-  num_transformations_ = transform_3d_param.num_transformations();
+  pad_value_ = param.pad_value();
+  num_transformations_ = param.num_transformations();
+  batch_size_ = field_shape[0];
+  order_ = param.order();
+  std::reverse(order_.begin(), order_.end());
 
-  int num_output = field_shape[0]*num_transformations_;
+  int num_output = batch_size_*num_transformations_;
   std::vector<int> transformations_shape;
   transformations_shape.push_back(num_output);
-  transformations_shape.push_back(len_trans_params*1);
+  transformations_shape.push_back(len_trans_params);
   transformations_.Reshape(transformations_shape);
+  inverse_transformations_.Reshape(transformations_shape);
 
   int field_num = bottom.size()-1;
   output_inverse_transformations_ = (top.size() == field_num+2);
@@ -114,7 +139,7 @@ void Transform3DLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
 template <typename Dtype>
 void Transform3DLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
-  int num_output = bottom[0]->shape()[0]*num_transformations_;
+  int num_output = batch_size_*num_transformations_;
 
   int field_num = bottom.size()-1;
   for (int i = 0; i < field_num; ++ i) {
@@ -127,12 +152,15 @@ void Transform3DLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   top[field_num]->Reshape(label_shape);
 
   if (output_inverse_transformations_) {
-    top[field_num]->Reshape(transformations_.shape());
+    top[field_num+1]->Reshape(transformations_.shape());
   }
 
   Dtype* transformations_data = transformations_.mutable_cpu_data();
+  Dtype* inverse_transformations_data = inverse_transformations_.mutable_cpu_data();
   for (int i = 0; i < num_output; ++ i) {
-    GetTransformation(transformations_data+i*len_trans_params);
+    int offset = i*len_trans_params;
+    GetTransformation(transformations_data+offset);
+    GetInverseTransformation(transformations_data+offset, inverse_transformations_data+offset);
   }
 }
 
@@ -141,8 +169,7 @@ template <typename Dtype>
 void Transform3DLayer<Dtype>::ForwardLabel(Blob<Dtype>* input_labels, Blob<Dtype>* output_labels) {
   const Dtype* input_data = input_labels->cpu_data();
   Dtype* output_data = output_labels->mutable_cpu_data();
-  int num_input = input_labels->count();
-  for (int i = 0; i < num_input; ++ i) {
+  for (int i = 0; i < batch_size_; ++ i) {
     int offset = i*num_transformations_;
     for (int j = 0; j < num_transformations_; ++ j) {
       output_data[offset+j] = input_data[i];
@@ -151,63 +178,55 @@ void Transform3DLayer<Dtype>::ForwardLabel(Blob<Dtype>* input_labels, Blob<Dtype
 }
 
 template <typename Dtype>
-void Transform3DLayer<Dtype>::ForwardInverseTransformations(Blob<Dtype>* transformations, Blob<Dtype>* inverse_transformations) {
-  int num_output = transformations->count()/len_trans_params;
-  for (int i = 0; i < num_output; ++ i) {
-    int offset = i*len_trans_params;
-    GetInverseTransformation(transformations->cpu_data()+offset, inverse_transformations->mutable_cpu_data()+offset);
-  }
-}
-
-template <typename Dtype>
 void Transform3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const vector<Blob<Dtype>*>& top) {
   int field_num = bottom.size()-1;
   ForwardLabel(bottom[field_num], top[field_num]);
+
+  int num_output = batch_size_*num_transformations_;
   if (output_inverse_transformations_) {
-    ForwardInverseTransformations(&transformations_, top[field_num+1]);
+    caffe_copy(num_output*len_trans_params, inverse_transformations_.cpu_data(), top[field_num+1]->mutable_cpu_data());
   }
 
   for (int i = 0; i < field_num; ++ i) {
     const Dtype* bottom_data = bottom[i]->cpu_data();
     const vector<int>& field_shape = bottom[i]->shape();
     Dtype* top_data = top[i]->mutable_cpu_data();
-    const int batch_size = field_shape[0];
-    const int grid_dim = field_shape[1];
-    const int grid_dim_1 = grid_dim-1;
-    const int yz = grid_dim*grid_dim;
-    const int num_grids = yz*grid_dim;
+    const int field_dim = field_shape[1];
+    const int field_dim_1 = field_dim-1;
+    const int yz = field_dim*field_dim;
+    const int num_grids = yz*field_dim;
     int field_channels = (field_shape.size() == 5)?(field_shape.back()):(1);
-    Dtype c_offset = (grid_dim_1)/2.0;
-    for (int b_batch_idx = 0; b_batch_idx < batch_size; ++ b_batch_idx) {
+    Dtype c_offset = field_dim_1/2.0;
+    for (int b_batch_idx = 0; b_batch_idx < batch_size_; ++ b_batch_idx) {
       for(int transformation_idx = 0; transformation_idx < num_transformations_; ++ transformation_idx) {
         int t_batch_idx = b_batch_idx * num_transformations_ + transformation_idx;
         const Dtype* t = transformations_.cpu_data() + t_batch_idx*len_trans_params;
   
         int t_n_offset = t_batch_idx * num_grids;
-        for (int x = 0; x < grid_dim; ++ x) {
-          Dtype xx = x+0.5-c_offset;
+        for (int x = 0; x < field_dim; ++ x) {
+          Dtype xx = x-c_offset;
           int t_n_x_offset = t_n_offset + x * yz;
-          for (int y = 0; y < grid_dim; ++ y) {
-            Dtype yy = y+0.5-c_offset;
-            int t_n_x_y_offset = t_n_x_offset + y*grid_dim;
-            for (int z = 0; z < grid_dim; ++ z) {
-              Dtype zz = z+0.5-c_offset;
+          for (int y = 0; y < field_dim; ++ y) {
+            Dtype yy = y-c_offset;
+            int t_n_x_y_offset = t_n_x_offset + y*field_dim;
+            for (int z = 0; z < field_dim; ++ z) {
+              Dtype zz = z-c_offset;
   
-              Dtype bx = t[0]*xx + t[1]*yy + t[2]*zz + t[3] + c_offset - 0.5;
-              Dtype by = t[4]*xx + t[5]*yy + t[6]*zz + t[7] + c_offset - 0.5;
-              Dtype bz = t[8]*xx + t[9]*yy + t[10]*zz + t[11] + c_offset - 0.5;
+              Dtype bx = t[0]*xx + t[1]*yy + t[2]*zz + t[3] + c_offset;
+              Dtype by = t[4]*xx + t[5]*yy + t[6]*zz + t[7] + c_offset;
+              Dtype bz = t[8]*xx + t[9]*yy + t[10]*zz + t[11] + c_offset;
   
               Dtype* t_data = top_data + (t_n_x_y_offset+z)*field_channels;
-              if(bx >= 0 && bx < grid_dim
-                  && by >= 0 && by < grid_dim
-                  && bz >= 0 && bz < grid_dim) {
+              if(bx >= 0 && bx < field_dim
+                  && by >= 0 && by < field_dim
+                  && bz >= 0 && bz < field_dim) {
                 int x0, y0, z0, x1, y1, z1;
-                SnapGrid_cpu(bx, x0, x1, grid_dim_1);
-                SnapGrid_cpu(by, y0, y1, grid_dim_1);
-                SnapGrid_cpu(bz, z0, z1, grid_dim_1);
+                SnapGrid_cpu(bx, x0, x1, field_dim_1);
+                SnapGrid_cpu(by, y0, y1, field_dim_1);
+                SnapGrid_cpu(bz, z0, z1, field_dim_1);
                 Interpolate_cpu(bottom_data, b_batch_idx, bx, by, bz, x0, y0, z0, x1, y1, z1,
-                  grid_dim, t_data, field_channels);
+                  field_dim, t_data, field_channels);
               } else {
                 caffe_set(field_channels, pad_value_, t_data);
               }

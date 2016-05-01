@@ -51,7 +51,7 @@ __global__ void FieldProbingForward(const int num_samples, const int num_sliding
         SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim_1);
       }
 
-      int top_offset = batch_idx * slided_num_samples + sliding_idx * num_samples + sample_idx;
+      int top_offset = batch_idx * slided_num_samples + idx;
       Dtype* t_data = top_data + top_offset * field_channels;
       Interpolate_gpu(field_data, batch_idx, x, y, z, x0, y0, z0, x1, y1, z1, field_dim, t_data, field_channels);
     } /* batch_idx */

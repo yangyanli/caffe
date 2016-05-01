@@ -476,6 +476,7 @@ message Transform3DParameter {
  
   required uint32 num_transformations = 19 [default = 1];
   required float pad_value = 20 [default = 0];
+  optional string order = 21 [default = ""];
 }
 
 message Pooling4DParameter {
