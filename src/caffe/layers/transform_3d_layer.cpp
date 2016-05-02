@@ -74,7 +74,15 @@ void Transform3DLayer<Dtype>::GetTransformation(Dtype* transformation) {
   const Dtype* p = (const Dtype*)glm::value_ptr(trans_row_major);
   for (int i = 0; i < len_trans_params; ++ i) {
     transformation[i] = p[i];
-  }  
+  }
+
+  /*
+  std::cout << std::endl;
+  std::cout << transformation[0] << " " << transformation[1] << " " << transformation[2] << " " << transformation[3] << std::endl;
+  std::cout << transformation[4] << " " << transformation[5] << " " << transformation[6] << " " << transformation[7] << std::endl;
+  std::cout << transformation[8] << " " << transformation[9] << " " << transformation[10] << " " << transformation[11] << std::endl;
+  std::cout << std::endl;
+  */
 
   return;
 }
