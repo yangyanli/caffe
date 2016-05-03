@@ -33,19 +33,24 @@ __global__ void FieldProbingForward(const int num_samples, const int num_sliding
     int x0, y0, z0, x1, y1, z1;
     Dtype x_a, y_a, z_a, x_m, y_m, z_m;
     int field_dim_1 = field_dim - 1;
+    Dtype c_offset = field_dim_1/2.0;
     if (trans == NULL) {
       x = sx; y = sy; z = sz;
       SnapGrid_gpu(x, x0, x1, x_a, x_m, field_dim_1);
       SnapGrid_gpu(y, y0, y1, y_a, y_m, field_dim_1);
       SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim_1);
+    } else {
+      sx -= c_offset;
+      sy -= c_offset;
+      sz -= c_offset;
     }
 
     for (int batch_idx = 0; batch_idx < batch_size; ++batch_idx) {
       if (trans != NULL) {
         const Dtype* t = trans + batch_idx * len_trans_params;
-        x = t[0] * sx + t[1] * sy + t[2] * sz + t[3];
-        y = t[4] * sx + t[5] * sy + t[6] * sz + t[7];
-        z = t[8] * sx + t[9] * sy + t[10] * sz + t[11];
+        x = t[0] * sx + t[1] * sy + t[2] * sz + t[3] + c_offset;
+        y = t[4] * sx + t[5] * sy + t[6] * sz + t[7] + c_offset;
+        z = t[8] * sx + t[9] * sy + t[10] * sz + t[11] + c_offset;
         SnapGrid_gpu(x, x0, x1, x_a, x_m, field_dim_1);
         SnapGrid_gpu(y, y0, y1, y_a, y_m, field_dim_1);
         SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim_1);
@@ -91,6 +96,7 @@ __global__ void FieldProbingBackward(const int num_samples, const int num_slidin
     Dtype* gradients = new Dtype[field_channels * 3];
 
     int field_dim_1 = field_dim - 1;
+    Dtype c_offset = field_dim_1/2.0;
     int slided_num_samples = num_sliding*num_sliding*num_sliding*num_samples;
 
     int p_offset = sample_idx * len_coordinates;
@@ -114,6 +120,10 @@ __global__ void FieldProbingBackward(const int num_samples, const int num_slidin
             SnapGrid_gpu(x, x0, x1, x_a, x_m, field_dim_1);
             SnapGrid_gpu(y, y0, y1, y_a, y_m, field_dim_1);
             SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim_1);
+          } else {
+            sx -= c_offset;
+            sy -= c_offset;
+            sz -= c_offset;
           }
 
           Dtype w_diff_x, w_diff_y, w_diff_z;
@@ -123,9 +133,9 @@ __global__ void FieldProbingBackward(const int num_samples, const int num_slidin
             int trans_offset = batch_idx * len_trans_params;
             if (trans != NULL) {
               const Dtype* t = trans + trans_offset;
-              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3];
-              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7];
-              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11];
+              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3] + c_offset;
+              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7] + c_offset;
+              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11] + c_offset;
               SnapGrid_gpu(x, x0, x1, x_a, x_m, field_dim_1);
               SnapGrid_gpu(y, y0, y1, y_a, y_m, field_dim_1);
               SnapGrid_gpu(z, z0, z1, z_a, z_m, field_dim_1);
@@ -178,6 +188,7 @@ __global__ void FieldProbingBackwardTrans(const int num_samples, const int num_s
   if(batch_idx < batch_size) {
     Dtype* gradients = new Dtype[field_channels * 3];
     int field_dim_1 = field_dim - 1;
+    Dtype c_offset = field_dim_1/2.0;
     int slided_num_samples = num_sliding*num_sliding*num_sliding*num_samples;
     int trans_offset = batch_idx * len_trans_params;
 
@@ -204,15 +215,15 @@ __global__ void FieldProbingBackwardTrans(const int num_samples, const int num_s
 
       int sliding_idx = 0;
       for (int i = 0; i < num_sliding; ++i) {
-        Dtype sx = px + (i + 0.5) * step;
+        Dtype sx = px + (i + 0.5) * step - c_offset;
         for (int j = 0; j < num_sliding; ++j) {
-          Dtype sy = py + (j + 0.5) * step;
+          Dtype sy = py + (j + 0.5) * step - c_offset;
           for (int k = 0; k < num_sliding; ++k) {
-            Dtype sz = pz + (k + 0.5) * step;
+            Dtype sz = pz + (k + 0.5) * step - c_offset;
 
-            Dtype x = a * sx + b * sy + c * sz + tx;
-            Dtype y = d * sx + e * sy + f * sz + ty;
-            Dtype z = g * sx + h * sy + i * sz + tz;
+            Dtype x = a * sx + b * sy + c * sz + tx + c_offset;
+            Dtype y = d * sx + e * sy + f * sz + ty + c_offset;
+            Dtype z = g * sx + h * sy + i * sz + tz + c_offset;
 
             int x0, y0, z0, x1, y1, z1;
             Dtype x_a, y_a, z_a, x_m, y_m, z_m;

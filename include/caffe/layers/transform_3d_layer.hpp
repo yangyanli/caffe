@@ -21,9 +21,8 @@ class Transform3DLayer : public Layer<Dtype> {
       const vector<Blob<Dtype>*>& top);
 
   virtual inline const char* type() const { return "Transform3D"; }
-  virtual inline int ExactNumBottomBlobs() const { return 2; }
+  virtual inline int MinNumBottomBlobs() const { return 2; }
   virtual inline int MinNumTopBlobs() const { return 2; }
-  virtual inline int MaxNumTopBlobs() const { return 3; }
 
  protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -60,7 +59,6 @@ class Transform3DLayer : public Layer<Dtype> {
   */
   static const int len_trans_params = 12;
   void GetTransformation(Dtype* transformation);
-  void GetInverseTransformation(const Dtype* transformation, Dtype* inverse_transformation);
   void GetVariateGenerator(boost::shared_ptr<VariateGenerator>& vg, Dtype min, Dtype max);
   
   Dtype pad_value_;
@@ -68,8 +66,7 @@ class Transform3DLayer : public Layer<Dtype> {
   int batch_size_;
   std::string order_;
   Blob<Dtype> transformations_;
-  Blob<Dtype> inverse_transformations_;
-  bool output_inverse_transformations_;
+  bool output_transformations_;
 };
 
 }  // namespace caffe

@@ -76,33 +76,6 @@ void Transform3DLayer<Dtype>::GetTransformation(Dtype* transformation) {
     transformation[i] = p[i];
   }
 
-  /*
-  std::cout << std::endl;
-  std::cout << transformation[0] << " " << transformation[1] << " " << transformation[2] << " " << transformation[3] << std::endl;
-  std::cout << transformation[4] << " " << transformation[5] << " " << transformation[6] << " " << transformation[7] << std::endl;
-  std::cout << transformation[8] << " " << transformation[9] << " " << transformation[10] << " " << transformation[11] << std::endl;
-  std::cout << std::endl;
-  */
-
-  return;
-}
-
-template <typename Dtype>
-void Transform3DLayer<Dtype>::GetInverseTransformation(const Dtype* transformation, Dtype* inverse_transformation) {
-  typedef glm::detail::tmat4x4<Dtype, glm::lowp> mat4;
-  mat4 trans_row_major;
-  Dtype* p = (Dtype*)glm::value_ptr(trans_row_major);
-  for (int i = 0; i < len_trans_params; ++ i) {
-    p[i] = transformation[i];
-  }
-  mat4 trans = glm::transpose(trans_row_major);
-  mat4 trans_row_major_inverse = glm::inverseTranspose(trans);
-
-  const Dtype* p_inverse = (const Dtype*)glm::value_ptr(trans_row_major_inverse);
-  for (int i = 0; i < len_trans_params; ++ i) {
-    inverse_transformation[i] = p_inverse[i];
-  }
-
   return;
 }
 
@@ -138,10 +111,8 @@ void Transform3DLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   transformations_shape.push_back(num_output);
   transformations_shape.push_back(len_trans_params);
   transformations_.Reshape(transformations_shape);
-  inverse_transformations_.Reshape(transformations_shape);
 
-  int field_num = bottom.size()-1;
-  output_inverse_transformations_ = (top.size() == field_num+2);
+  output_transformations_ = (top.size() == bottom.size()+1);
 }
 
 template <typename Dtype>
@@ -159,17 +130,27 @@ void Transform3DLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom,
   std::vector<int> label_shape(1, num_output);
   top[field_num]->Reshape(label_shape);
 
-  if (output_inverse_transformations_) {
+  if (output_transformations_) {
     top[field_num+1]->Reshape(transformations_.shape());
   }
 
   Dtype* transformations_data = transformations_.mutable_cpu_data();
-  Dtype* inverse_transformations_data = inverse_transformations_.mutable_cpu_data();
   for (int i = 0; i < num_output; ++ i) {
     int offset = i*len_trans_params;
     GetTransformation(transformations_data+offset);
-    GetInverseTransformation(transformations_data+offset, inverse_transformations_data+offset);
   }
+
+  /*
+  for (int i = 0; i < num_output; ++ i) {
+    int offset = i*len_trans_params;
+    const Dtype* t = transformations_data+offset;
+    std::cout << std::endl;
+    std::cout << t[0] << " " << t[1] << " " << t[2] << " " << t[3] << std::endl;
+    std::cout << t[4] << " " << t[5] << " " << t[6] << " " << t[7] << std::endl;
+    std::cout << t[8] << " " << t[9] << " " << t[10] << " " << t[11] << std::endl;
+    std::cout << std::endl;
+  }
+  */
 }
 
 
@@ -192,8 +173,8 @@ void Transform3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
   ForwardLabel(bottom[field_num], top[field_num]);
 
   int num_output = batch_size_*num_transformations_;
-  if (output_inverse_transformations_) {
-    caffe_copy(num_output*len_trans_params, inverse_transformations_.cpu_data(), top[field_num+1]->mutable_cpu_data());
+  if (output_transformations_) {
+    caffe_copy(num_output*len_trans_params, transformations_.cpu_data(), top[field_num+1]->mutable_cpu_data());
   }
 
   for (int i = 0; i < field_num; ++ i) {

@@ -85,6 +85,7 @@ void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   int field_dim_1 = field_dim_ - 1;
+  Dtype c_offset = field_dim_1/2.0;
   int num_samples = num_curve_ * len_curve_;
   int slided_num_samples = num_sliding_ * num_sliding_ * num_sliding_ * num_samples;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
@@ -113,14 +114,18 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
             SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
             SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
             SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
+          } else {
+            sx -= c_offset;
+            sy -= c_offset;
+            sz -= c_offset;
           }
 
           for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
             if (transform_) {
               const Dtype* t = trans + batch_idx * len_trans_params;
-              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3];
-              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7];
-              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11];
+              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3] + c_offset;
+              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7] + c_offset;
+              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11] + c_offset;
               SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
               SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
               SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
@@ -147,6 +152,7 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   int field_dim_1 = field_dim_ - 1;
+  Dtype c_offset = field_dim_1/2.0;
   int num_samples = num_curve_ * len_curve_;
   int num_sliding_total = num_sliding_ * num_sliding_ * num_sliding_;
   int slided_num_samples = num_sliding_total * num_samples;
@@ -184,6 +190,10 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
             SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
             SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
             SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
+          } else {
+            sx -= c_offset;
+            sy -= c_offset;
+            sz -= c_offset;
           }
 
           Dtype w_diff_x, w_diff_y, w_diff_z;
@@ -193,9 +203,9 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
             int trans_offset = batch_idx * len_trans_params;
             if (transform_) {
               const Dtype* t = trans + trans_offset;
-              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3];
-              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7];
-              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11];
+              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3] + c_offset;
+              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7] + c_offset;
+              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11] + c_offset;
               SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
               SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
               SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);

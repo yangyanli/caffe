@@ -59,8 +59,8 @@ void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   ForwardLabel(bottom[field_num], top[field_num]);
 
   int num_output = batch_size_*num_transformations_;
-  if (output_inverse_transformations_) {
-    caffe_copy(num_output*len_trans_params, inverse_transformations_.gpu_data(), top[field_num+1]->mutable_gpu_data());
+  if (output_transformations_) {
+    caffe_copy(num_output*len_trans_params, transformations_.gpu_data(), top[field_num+1]->mutable_gpu_data());
   }
 
   for (int i = 0; i < field_num; ++ i) {
