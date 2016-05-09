@@ -292,7 +292,7 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
   Dtype radius = field_dim_ * 0.5 / num_sliding_ + padding_;
   Dtype diameter = 2 * radius;
 
-  int num_padding = std::ceil(padding_/diameter*dim_grid);
+  int num_padding = 1;
   Dtype step = 1.0/(dim_grid+2*num_padding);
   Dtype min = param.min_span();
   Dtype max = param.max_span();
