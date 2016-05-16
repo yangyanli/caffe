@@ -183,7 +183,8 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
     }
   } /* top.size() */
 
-  Dtype scaler = 1.0 / (batch_size_ * top.size());
+  //Dtype scaler = 1.0 / (batch_size_ * top.size());
+  Dtype scaler = 1.0 / (top.size());
   caffe_scal(num_sliding_curves * len_dot, scaler, this->blobs_[0]->mutable_cpu_diff());
   caffe_scal(num_sliding_curves, scaler, this->blobs_[1]->mutable_cpu_diff());
 

@@ -196,7 +196,8 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
   } /* sample_idx */
 
 
-  caffe_scal(this->blobs_[0]->count(), Dtype(1.0/(num_sliding_total*batch_size_*field_num_)), filters_diff);
+  //caffe_scal(this->blobs_[0]->count(), Dtype(1.0/(num_sliding_total*batch_size_*field_num_)), filters_diff);
+  caffe_scal(this->blobs_[0]->count(), Dtype(1.0/(num_sliding_total*field_num_)), filters_diff);
   if (rand() % 100 == 0) {
     {
       Dtype amax = caffe_cpu_amax(top[0]->count(), top[0]->cpu_diff());

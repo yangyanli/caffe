@@ -166,7 +166,9 @@ void CurvolutionLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, cons
       }
     }
   } /* top.size() */
-  Dtype scaler = 1.0/(batch_size*top.size());
+
+  //Dtype scaler = 1.0/(batch_size*top.size());
+  Dtype scaler = 1.0 / (top.size());
   caffe_gpu_scal(num_sliding_curves*len_dot, scaler, this->blobs_[0]->mutable_gpu_diff());
   caffe_gpu_scal(num_sliding_curves, scaler, this->blobs_[1]->mutable_gpu_diff());
 

@@ -147,15 +147,16 @@ void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, con
     int field_channels = (field_shape.size() == 5) ? (field_shape.back()) : (1);
 
     const Dtype* bottom_data = bottom[field_idx]->gpu_data();
-    const Dtype* top_data = top[field_idx]->mutable_gpu_data();
-    const Dtype* top_diff = top[field_idx]->mutable_gpu_diff();
+    const Dtype* top_data = top[field_idx]->gpu_data();
+    const Dtype* top_diff = top[field_idx]->gpu_diff();
     // NOLINT_NEXT_LINE(whitespace/operators)
     FieldProbingBackward<Dtype><<<CAFFE_GET_BLOCKS(num_samples), CAFFE_CUDA_NUM_THREADS>>>(num_samples, num_sliding_,
         batch_size_, field_dim_, step, filters, filters_diff, bottom_data, top_data, top_diff, len_coordinates, field_channels);
     CUDA_POST_KERNEL_CHECK;
   } /* field_num_ */
 
-  caffe_gpu_scal(this->blobs_[0]->count(), Dtype(1.0 / (num_sliding_total * batch_size_ * field_num_)), filters_diff);
+  //caffe_gpu_scal(this->blobs_[0]->count(), Dtype(1.0 / (num_sliding_total * batch_size_ * field_num_)), filters_diff);
+  caffe_gpu_scal(this->blobs_[0]->count(), Dtype(1.0 / (num_sliding_total * field_num_)), filters_diff);
 }
 
 INSTANTIATE_LAYER_GPU_FUNCS(FieldProbingLayer);

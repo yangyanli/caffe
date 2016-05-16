@@ -174,7 +174,6 @@ namespace caffe {
       v101*x_x0*y1_y*z_z0 +
       v011*x1_x*y_y0*z_z0 +
       v110*x_x0*y_y0*z1_z +
-  required float max_chop_radius = 2 [default = 0.50];
       v111*x_x0*y_y0*z_z0;
       */
 
