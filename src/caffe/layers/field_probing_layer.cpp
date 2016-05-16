@@ -8,18 +8,10 @@ namespace caffe {
 
 template<typename Dtype>
 const int FieldProbingLayer<Dtype>::len_coordinates;
-template<typename Dtype>
-const int FieldProbingLayer<Dtype>::len_trans_params;
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   field_num_ = top.size();
-  transform_ = (bottom.size() != field_num_);
-  if (transform_) {
-    CHECK_EQ(bottom.size(), field_num_ + 1) << "FieldProbingLayer takes only one optional transformation bottom.";
-  } else {
-    CHECK_EQ(bottom.size(), field_num_) << "FieldProbingLayer expects equal number of input fields and outputs.";
-  }
 
   std::vector<int> field_0_shape = bottom[0]->shape();
   CHECK(field_0_shape.size() == 4 || field_0_shape.size() == 5) << "FieldProbingLayer supports only 4D or 5D data.";
@@ -84,14 +76,12 @@ void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  int field_dim_1 = field_dim_ - 1;
-  Dtype c_offset = field_dim_1/2.0;
   int num_samples = num_curve_ * len_curve_;
   int slided_num_samples = num_sliding_ * num_sliding_ * num_sliding_ * num_samples;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
+  int field_dim_1 = field_dim_ - 1;
 
   const Dtype* filters = this->blobs_[0]->cpu_data();
-  const Dtype* trans = transform_ ? (bottom[field_num_]->cpu_data()) : (NULL);
   for (int sample_idx = 0; sample_idx < num_samples; ++sample_idx) {
     int p_offset = sample_idx * len_coordinates;
     Dtype px = filters[p_offset + 0];
@@ -109,28 +99,12 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
           Dtype x, y, z;
           int x0, y0, z0, x1, y1, z1;
           Dtype x_a, y_a, z_a, x_m, y_m, z_m;
-          if (!transform_) {
-            x = sx; y = sy; z = sz;
-            SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
-            SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
-            SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
-          } else {
-            sx -= c_offset;
-            sy -= c_offset;
-            sz -= c_offset;
-          }
+          x = sx; y = sy; z = sz;
+          SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
+          SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
+          SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
 
           for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
-            if (transform_) {
-              const Dtype* t = trans + batch_idx * len_trans_params;
-              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3] + c_offset;
-              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7] + c_offset;
-              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11] + c_offset;
-              SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
-              SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
-              SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
-            }
-
             int top_offset = batch_idx * slided_num_samples + sliding_idx * num_samples + sample_idx;
             for (int field_idx = 0; field_idx < field_num_; ++field_idx) {
               const std::vector<int>& field_shape = bottom[i]->shape();
@@ -151,22 +125,15 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  int field_dim_1 = field_dim_ - 1;
-  Dtype c_offset = field_dim_1/2.0;
   int num_samples = num_curve_ * len_curve_;
   int num_sliding_total = num_sliding_ * num_sliding_ * num_sliding_;
   int slided_num_samples = num_sliding_total * num_samples;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
+  int field_dim_1 = field_dim_ - 1;
 
   const Dtype* filters = this->blobs_[0]->cpu_data();
-  const Dtype* trans = transform_ ? (bottom[field_num_]->cpu_data()) : (NULL);
-
   Dtype* filters_diff = this->blobs_[0]->mutable_cpu_diff();
   caffe_set(this->blobs_[0]->count(), Dtype(0), filters_diff);
-  Dtype* trans_diff = transform_ ? (bottom[field_num_]->mutable_cpu_diff()) : (NULL);
-  if(transform_) {
-    caffe_set(bottom[field_num_]->count(), Dtype(0), trans_diff);
-  }
 
   for (int sample_idx = 0; sample_idx < num_samples; ++sample_idx) {
     int p_offset = sample_idx * len_coordinates;
@@ -185,32 +152,15 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
           Dtype x, y, z;
           int x0, y0, z0, x1, y1, z1;
           Dtype x_a, y_a, z_a, x_m, y_m, z_m;
-          if (!transform_) {
-            x = sx; y = sy; z = sz;
-            SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
-            SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
-            SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
-          } else {
-            sx -= c_offset;
-            sy -= c_offset;
-            sz -= c_offset;
-          }
+          x = sx; y = sy; z = sz;
+          SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
+          SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
+          SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
 
           Dtype w_diff_x, w_diff_y, w_diff_z;
           w_diff_x = w_diff_y = w_diff_z = 0;
 
           for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
-            int trans_offset = batch_idx * len_trans_params;
-            if (transform_) {
-              const Dtype* t = trans + trans_offset;
-              x = t[0] * sx + t[1] * sy + t[2] * sz + t[3] + c_offset;
-              y = t[4] * sx + t[5] * sy + t[6] * sz + t[7] + c_offset;
-              z = t[8] * sx + t[9] * sy + t[10] * sz + t[11] + c_offset;
-              SnapGrid_cpu(x, x0, x1, x_a, x_m, field_dim_1);
-              SnapGrid_cpu(y, y0, y1, y_a, y_m, field_dim_1);
-              SnapGrid_cpu(z, z0, z1, z_a, z_m, field_dim_1);
-            }
-
             Dtype diff_x, diff_y, diff_z;
             diff_x = diff_y = diff_z = 0;
             int top_offset = batch_idx * slided_num_samples + sliding_idx * num_samples + sample_idx;
@@ -230,22 +180,9 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
               }
               delete gradients;
             }
-
-            if (transform_) {
-              const Dtype* t = trans + trans_offset;
-              w_diff_x = t[0]*diff_x + t[4]*diff_y + t[8]*diff_z;
-              w_diff_y = t[1]*diff_x + t[5]*diff_y + t[9]*diff_z;
-              w_diff_z = t[2]*diff_x + t[6]*diff_y + t[10]*diff_z;
-
-              Dtype* t_diff = trans_diff + trans_offset;
-              t_diff[0] += x*diff_x; t_diff[1] += y*diff_x; t_diff[2] += z*diff_x; t_diff[3] += diff_x;
-              t_diff[4] += x*diff_y; t_diff[5] += y*diff_y; t_diff[6] += z*diff_y; t_diff[7] += diff_y;
-              t_diff[8] += x*diff_z; t_diff[9] += y*diff_z; t_diff[10] += z*diff_z; t_diff[11] += diff_z;
-            } else {
-              w_diff_x += diff_x;
-              w_diff_x += diff_y;
-              w_diff_x += diff_z;
-            }
+            w_diff_x += diff_x;
+            w_diff_y += diff_y;
+            w_diff_z += diff_z;
           } /* batch_idx */
 
           filters_diff[p_offset + 0] += w_diff_x;
@@ -260,10 +197,6 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
 
 
   caffe_scal(this->blobs_[0]->count(), Dtype(1.0/(num_sliding_total*batch_size_*field_num_)), filters_diff);
-  if (transform_) {
-    caffe_scal(bottom[field_num_]->count(), Dtype(1.0/(slided_num_samples*field_num_)), trans_diff);
-  }
-
   if (rand() % 100 == 0) {
     {
       Dtype amax = caffe_cpu_amax(top[0]->count(), top[0]->cpu_diff());
@@ -274,12 +207,6 @@ void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, con
       Dtype amax = caffe_cpu_amax(this->blobs_[0]->count(), this->blobs_[0]->cpu_diff());
       Dtype aavg = caffe_cpu_aavg(this->blobs_[0]->count(), this->blobs_[0]->cpu_diff());
       LOG(INFO) << "FieldProbingLayer::Backward_cpu weight_diff max-avg: " << amax << "\t" << aavg;
-    }
-    if (transform_) {
-      Dtype amax = caffe_cpu_amax(bottom[field_num_]->count(), bottom[field_num_]->cpu_diff());
-      Dtype aavg = caffe_cpu_aavg(bottom[field_num_]->count(),
-          bottom[field_num_]->cpu_diff());
-      LOG(INFO) << "FieldProbingLayer::Backward_cpu trans_diff max-avg: " << amax << "\t" << aavg;
     }
   }
 }

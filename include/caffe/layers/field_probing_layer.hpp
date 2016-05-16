@@ -23,7 +23,7 @@ public:
 
   virtual inline int MinBottomBlobs() const { return 1; }
   virtual inline int MinTopBlobs() const { return 1; }
-  virtual inline bool EqualNumBottomTopBlobs() const { return false; }
+  virtual inline bool EqualNumBottomTopBlobs() const { return true; }
 
 protected:
   virtual void Forward_cpu(const vector<Blob<Dtype>*>& bottom,
@@ -44,7 +44,6 @@ protected:
   int field_num_;
   int batch_size_;
   int field_dim_;
-  bool transform_;
 
   int num_sliding_;
   Dtype padding_;
@@ -53,7 +52,6 @@ protected:
   int len_curve_;
 
   static const int len_coordinates = 4;
-  static const int len_trans_params = 12;
 };
 
 }  // namespace caffe
