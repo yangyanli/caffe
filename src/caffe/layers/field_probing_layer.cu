@@ -47,7 +47,7 @@ __global__ void FieldProbingForward(const int num_samples, const int num_sliding
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  int num_samples = num_curve_ * len_curve_;
+  int num_samples = num_filter_ * len_filter_;
   int slided_num_samples = num_sliding_ * num_sliding_ * num_sliding_ * num_samples;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
 
@@ -134,7 +134,7 @@ __global__ void FieldProbingBackward(const int num_samples, const int num_slidin
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_gpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  int num_samples = num_curve_ * len_curve_;
+  int num_samples = num_filter_ * len_filter_;
   int num_sliding_total = num_sliding_ * num_sliding_ * num_sliding_;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
 

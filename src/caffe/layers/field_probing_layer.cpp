@@ -35,12 +35,12 @@ void FieldProbingLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, co
   const FieldProbingParameter& param = this->layer_param_.field_probing_param();
   num_sliding_ = param.num_sliding();
   padding_ = param.padding();
-  num_curve_ = param.num_curve();
-  len_curve_ = param.len_curve();
+  num_filter_ = param.num_filter();
+  len_filter_ = param.len_filter();
 
   std::vector<int> filters_shape;
-  filters_shape.push_back(num_curve_);
-  filters_shape.push_back(len_curve_);
+  filters_shape.push_back(num_filter_);
+  filters_shape.push_back(len_filter_);
   filters_shape.push_back(len_coordinates);
   if (this->blobs_.size() > 0) {
     CHECK_EQ(1, this->blobs_.size()) << "Incorrect number of weight blobs.";
@@ -64,8 +64,8 @@ void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
   top_shape.push_back(num_sliding_);
   top_shape.push_back(num_sliding_);
   top_shape.push_back(num_sliding_);
-  top_shape.push_back(num_curve_);
-  top_shape.push_back(len_curve_);
+  top_shape.push_back(num_filter_);
+  top_shape.push_back(len_filter_);
 
   top_shape.push_back(0);
   for (int i = 0; i < field_num_; ++i) {
@@ -78,7 +78,7 @@ void FieldProbingLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
-  int num_samples = num_curve_ * len_curve_;
+  int num_samples = num_filter_ * len_filter_;
   int slided_num_samples = num_sliding_ * num_sliding_ * num_sliding_ * num_samples;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
   int field_dim_1 = field_dim_ - 1;
@@ -127,7 +127,7 @@ void FieldProbingLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, c
 
 template<typename Dtype>
 void FieldProbingLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
-  int num_samples = num_curve_ * len_curve_;
+  int num_samples = num_filter_ * len_filter_;
   int num_sliding_total = num_sliding_ * num_sliding_ * num_sliding_;
   int slided_num_samples = num_sliding_total * num_samples;
   Dtype step = field_dim_ * 1.0 / num_sliding_;
@@ -246,7 +246,7 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
 
   int curve_count = 0;
   Dtype* data = blob->mutable_cpu_data();
-  while(curve_count < num_curve_) {
+  while(curve_count < num_filter_) {
     int idx = rand()%num_grid;
     int x = idx%dim_grid;
     int y = (idx/dim_grid)%dim_grid;
@@ -277,8 +277,8 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
     Dtype end_z = center_zz - offset_z;
     ForceInRange(center_xx, center_yy, center_zz, end_x, end_y, end_z);
 
-    for (int l = 0; l < len_curve_; ++ l) {
-      Dtype ratio = 1.0*l/(len_curve_-1);
+    for (int l = 0; l < len_filter_; ++ l) {
+      Dtype ratio = 1.0*l/(len_filter_-1);
       Dtype sample_x = start_x + (end_x-start_x)*ratio;
       Dtype sample_y = start_y + (end_y-start_y)*ratio;
       Dtype sample_z = start_z + (end_z-start_z)*ratio;

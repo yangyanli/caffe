@@ -407,8 +407,8 @@ message LayerParameter {
   optional TileParameter tile_param = 138;
   optional WindowDataParameter window_data_param = 129;
 
-  // Curvolution related parameters
-  optional CurvolutionParameter curvolution_param = 501; 
+  // Field Probing related parameters
+  optional DotProductParameter dot_product_param = 501; 
   optional FieldProbingParameter field_probing_param = 502; 
   optional GaussianParameter gaussian_param = 503; 
   optional ShuffleParameter shuffle_param = 504; 
@@ -417,7 +417,7 @@ message LayerParameter {
   optional Pooling4DParameter pooling_4d_param = 507;
 }
 
-message CurvolutionParameter {
+message DotProductParameter {
   required FillerParameter weight_filler = 1; // The filler for the weight
   required FillerParameter bias_filler = 2; // The filler for the bias
   required bool share_weights = 3 [default = false];
@@ -426,8 +426,8 @@ message CurvolutionParameter {
 message FieldProbingParameter {
   required uint32 num_sliding = 1 [default = 1];
   required float padding = 2 [default = 4.0];
-  required uint32 num_curve = 3 [default = 1024];
-  required uint32 len_curve = 4 [default = 8];
+  required uint32 num_filter = 3 [default = 1024];
+  required uint32 len_filter = 4 [default = 8];
   required float min_span = 5 [default = 0.1];
   required float max_span = 6 [default = 0.2];
 }

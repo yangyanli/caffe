@@ -48,8 +48,8 @@ protected:
   int num_sliding_;
   Dtype padding_;
 
-  int num_curve_;
-  int len_curve_;
+  int num_filter_;
+  int len_filter_;
 
   static const int len_coordinates = 4;
 };

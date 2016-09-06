@@ -1,12 +1,12 @@
 #include "caffe/filler.hpp"
 #include "caffe/util/benchmark.hpp"
 #include "caffe/util/math_functions.hpp"
-#include "caffe/layers/curv_layer.hpp"
+#include "caffe/layers/dot_product_layer.hpp"
 
 namespace caffe {
 
 template<typename Dtype>
-void CurvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+void DotProductLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   for (int bottom_id = 1; bottom_id < bottom.size(); ++bottom_id) {
     CHECK(bottom[0]->shape() == bottom[bottom_id]->shape())
         << "All inputs must have the same shape.";
@@ -17,11 +17,11 @@ void CurvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, con
   num_sliding_ = bottom_shape[1];
   //num_sliding_ = bottom_shape[2];
   //num_sliding_ = bottom_shape[3];
-  num_curve_ = bottom_shape[4];
-  len_curve_ = bottom_shape[5];
+  num_filter_ = bottom_shape[4];
+  len_filter_ = bottom_shape[5];
   num_channel_ = bottom_shape[6];
 
-  const CurvolutionParameter& param = this->layer_param_.curvolution_param();
+  const DotProductParameter& param = this->layer_param_.dot_product_param();
   share_weights_ = param.share_weights();
 
   vector<int> weight_shape;
@@ -30,8 +30,8 @@ void CurvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, con
     weight_shape.push_back(num_sliding_);
     weight_shape.push_back(num_sliding_);
   }
-  weight_shape.push_back(num_curve_);
-  weight_shape.push_back(len_curve_);
+  weight_shape.push_back(num_filter_);
+  weight_shape.push_back(len_filter_);
   weight_shape.push_back(num_channel_);
 
   std::vector<int> bias_shape;
@@ -67,8 +67,8 @@ void CurvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, con
     slided_weight_shape.push_back(num_sliding_);
     slided_weight_shape.push_back(num_sliding_);
     slided_weight_shape.push_back(num_sliding_);
-    slided_weight_shape.push_back(num_curve_);
-    slided_weight_shape.push_back(len_curve_);
+    slided_weight_shape.push_back(num_filter_);
+    slided_weight_shape.push_back(len_filter_);
     slided_weight_shape.push_back(num_channel_);
     slided_weight_.Reshape(slided_weight_shape);
 
@@ -80,7 +80,7 @@ void CurvolutionLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom, con
 }
 
 template<typename Dtype>
-void CurvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+void DotProductLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   // Shape the tops.
   const vector<int>& bottom_shape = bottom[0]->shape();
   vector<int> top_shape;
@@ -91,41 +91,41 @@ void CurvolutionLayer<Dtype>::Reshape(const vector<Blob<Dtype>*>& bottom, const 
 }
 
 template<typename Dtype>
-void CurvolutionLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
+void DotProductLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom, const vector<Blob<Dtype>*>& top) {
   const Dtype* weight = this->blobs_[0]->cpu_data();
   const Dtype* bias = this->blobs_[1]->cpu_data();
 
   int num_sliding_total = num_sliding_*num_sliding_*num_sliding_;
-  int num_sliding_curves = num_sliding_total * num_curve_;
-  int len_dot = len_curve_ * num_channel_;
+  int num_sliding_filters = num_sliding_total * num_filter_;
+  int len_dot = len_filter_ * num_channel_;
 
   for (int i = 0; i < bottom.size(); ++i) {
     const Dtype* bottom_data = bottom[i]->cpu_data();
     Dtype* top_data = top[i]->mutable_cpu_data();
     for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
-      int batch_offset = batch_idx * num_sliding_curves;
+      int batch_offset = batch_idx * num_sliding_filters;
       for (int sliding_idx = 0; sliding_idx < num_sliding_total; ++ sliding_idx) {
-        int sliding_offset = sliding_idx * num_curve_;
-        for (int curve_idx = 0; curve_idx < num_curve_; ++curve_idx) {
-          int sliding_curve_idx = sliding_offset + curve_idx;
-          int top_offset = batch_offset + sliding_curve_idx;
+        int sliding_offset = sliding_idx * num_filter_;
+        for (int filter_idx = 0; filter_idx < num_filter_; ++filter_idx) {
+          int sliding_filter_idx = sliding_offset + filter_idx;
+          int top_offset = batch_offset + sliding_filter_idx;
           int bottom_offset = top_offset * len_dot;
-          int weight_offset = (share_weights_?(curve_idx):(sliding_curve_idx)) * len_dot;
+          int weight_offset = (share_weights_?(filter_idx):(sliding_filter_idx)) * len_dot;
           top_data[top_offset] = caffe_cpu_dot(len_dot, bottom_data + bottom_offset, weight + weight_offset);
-        } /* num_all_curves */
+        } /* num_all_filters */
         if(share_weights_) {
-          caffe_axpy(num_curve_, (Dtype) (1.), bias, top_data+batch_offset+sliding_offset);
+          caffe_axpy(num_filter_, (Dtype) (1.), bias, top_data+batch_offset+sliding_offset);
         }
       }
       if(!share_weights_) {
-        caffe_axpy(num_sliding_curves, (Dtype) (1.), bias, top_data+batch_offset);
+        caffe_axpy(num_sliding_filters, (Dtype) (1.), bias, top_data+batch_offset);
       }
     } /* batch_size */
   } /* bottom.size() */
 }
 
 template<typename Dtype>
-void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
+void DotProductLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, const vector<bool>& propagate_down, const vector<Blob<Dtype>*>& bottom) {
   const Dtype* weight = this->blobs_[0]->cpu_data();
   Dtype* weight_diff = this->blobs_[0]->mutable_cpu_diff();
   caffe_set(this->blobs_[0]->count(), Dtype(0), weight_diff);
@@ -135,8 +135,8 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
   }
 
   int num_sliding_total = num_sliding_*num_sliding_*num_sliding_;
-  int num_sliding_curves = num_sliding_total * num_curve_;
-  int len_dot = len_curve_ * num_channel_;
+  int num_sliding_filters = num_sliding_total * num_filter_;
+  int len_dot = len_filter_ * num_channel_;
 
   for (int i = 0; i < top.size(); ++i) {
     const Dtype* top_diff = top[i]->cpu_diff();
@@ -144,14 +144,14 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
     if (this->param_propagate_down_[1]) {
       Dtype* bias_diff = this->blobs_[1]->mutable_cpu_diff();
       for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
-        int batch_offset = batch_idx * num_sliding_curves;
+        int batch_offset = batch_idx * num_sliding_filters;
         if(share_weights_) {
           for (int sliding_idx = 0; sliding_idx < num_sliding_total; ++ sliding_idx) {
-            int sliding_offset = sliding_idx * num_curve_;
-            caffe_axpy(num_curve_, (Dtype) 1., top_diff + batch_offset + sliding_offset, bias_diff);
+            int sliding_offset = sliding_idx * num_filter_;
+            caffe_axpy(num_filter_, (Dtype) 1., top_diff + batch_offset + sliding_offset, bias_diff);
           }
         } else {
-          caffe_axpy(num_sliding_curves, (Dtype) 1., top_diff + batch_offset, bias_diff);
+          caffe_axpy(num_sliding_filters, (Dtype) 1., top_diff + batch_offset, bias_diff);
         }
       } /* batch_size */
     }
@@ -161,14 +161,14 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
       caffe_set(bottom[i]->count(), Dtype(0), bottom_diff);
 
       for (int batch_idx = 0; batch_idx < batch_size_; ++batch_idx) {
-        int batch_offset = batch_idx * num_sliding_curves;
+        int batch_offset = batch_idx * num_sliding_filters;
         for (int sliding_idx = 0; sliding_idx < num_sliding_total; ++ sliding_idx) {
-          int sliding_offset = sliding_idx * num_curve_;
-          for (int curve_idx = 0; curve_idx < num_curve_; ++curve_idx) {
-            int sliding_curve_idx = sliding_offset + curve_idx;
-            int top_offset = batch_offset + sliding_curve_idx;
+          int sliding_offset = sliding_idx * num_filter_;
+          for (int filter_idx = 0; filter_idx < num_filter_; ++filter_idx) {
+            int sliding_filter_idx = sliding_offset + filter_idx;
+            int top_offset = batch_offset + sliding_filter_idx;
             int bottom_offset = top_offset * len_dot;
-            int weight_offset = (share_weights_?(curve_idx):(sliding_curve_idx)) * len_dot;
+            int weight_offset = (share_weights_?(filter_idx):(sliding_filter_idx)) * len_dot;
             // gradient w.r.t. weight. Note that we will accumulate diffs.
             if (this->param_propagate_down_[0]) {
               caffe_axpy(len_dot, top_diff[top_offset], bottom_data + bottom_offset, weight_diff + weight_offset);
@@ -177,7 +177,7 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
             if (propagate_down[i]) {
               caffe_axpy(len_dot, top_diff[top_offset], weight + weight_offset, bottom_diff + bottom_offset);
             }
-          } /* num_curve_ */
+          } /* num_filter_ */
         } /* num_sliding_total */
       } /* batch_size */
     }
@@ -185,28 +185,28 @@ void CurvolutionLayer<Dtype>::Backward_cpu(const vector<Blob<Dtype>*>& top, cons
 
   //Dtype scaler = 1.0 / (batch_size_ * top.size());
   Dtype scaler = 1.0 / (top.size());
-  caffe_scal(num_sliding_curves * len_dot, scaler, this->blobs_[0]->mutable_cpu_diff());
-  caffe_scal(num_sliding_curves, scaler, this->blobs_[1]->mutable_cpu_diff());
+  caffe_scal(num_sliding_filters * len_dot, scaler, this->blobs_[0]->mutable_cpu_diff());
+  caffe_scal(num_sliding_filters, scaler, this->blobs_[1]->mutable_cpu_diff());
 
   if (rand() % 100 == 0) {
     {
       Dtype amax = caffe_cpu_amax(top[0]->count(), top[0]->cpu_diff());
       Dtype aavg = caffe_cpu_aavg(top[0]->count(), top[0]->cpu_diff());
-      LOG(INFO) << "CurvolutionLayer::Backward_cpu top_diff max-avg: " << amax << "\t" << aavg;
+      LOG(INFO) << "DotProductLayer::Backward_cpu top_diff max-avg: " << amax << "\t" << aavg;
     }
     {
       Dtype amax = caffe_cpu_amax(this->blobs_[0]->count(), this->blobs_[0]->cpu_diff());
       Dtype aavg = caffe_cpu_aavg(this->blobs_[0]->count(), this->blobs_[0]->cpu_diff());
-      LOG(INFO) << "CurvolutionLayer::Backward_cpu weight_diff max-avg: " << amax << "\t" << aavg;
+      LOG(INFO) << "DotProductLayer::Backward_cpu weight_diff max-avg: " << amax << "\t" << aavg;
     }
   }
 }
 
 #ifdef CPU_ONLY
-STUB_GPU(CurvolutionLayer);
+STUB_GPU(DotProductLayer);
 #endif
 
-INSTANTIATE_CLASS(CurvolutionLayer);
-REGISTER_LAYER_CLASS(Curvolution);
+INSTANTIATE_CLASS(DotProductLayer);
+REGISTER_LAYER_CLASS(DotProduct);
 
 }  // namespace caffe

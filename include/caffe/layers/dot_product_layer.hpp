@@ -1,22 +1,22 @@
-#ifndef CAFFE_CURVOLUTION_LAYER_HPP_
-#define CAFFE_CURVOLUTION_LAYER_HPP_
+#ifndef CAFFE_DOT_PRODUCT_LAYER_HPP_
+#define CAFFE_DOT_PRODUCT_LAYER_HPP_
 
 #include "caffe/layer.hpp"
 
 namespace caffe {
 
 /**
- * @brief CurvolutionLayer
+ * @brief DotProductLayer
  */
 template<typename Dtype>
-class CurvolutionLayer: public Layer<Dtype> {
+class DotProductLayer: public Layer<Dtype> {
 public:
-  explicit CurvolutionLayer(const LayerParameter& param)
+  explicit DotProductLayer(const LayerParameter& param)
   :
       Layer<Dtype>(param) {
   }
   virtual inline const char* type() const {
-    return "Curvolution";
+    return "DotProduct";
   }
   virtual void LayerSetUp(const vector<Blob<Dtype>*>& bottom,
       const vector<Blob<Dtype>*>& top);
@@ -45,8 +45,8 @@ protected:
 
   int batch_size_;
   int num_sliding_;
-  int num_curve_;
-  int len_curve_;
+  int num_filter_;
+  int len_filter_;
   int num_channel_;
   bool share_weights_;
 
@@ -58,4 +58,4 @@ protected:
 
 }  // namespace caffe
 
-#endif  // CAFFE_CURVOLUTION_LAYER_HPP_
+#endif  // CAFFE_DOT_PRODUCT_LAYER_HPP_
