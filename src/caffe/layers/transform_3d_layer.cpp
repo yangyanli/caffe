@@ -1,3 +1,5 @@
+#include <boost/math/special_functions/next.hpp>
+
 #define GLM_FORCE_RADIANS
 #include <glm/gtx/transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -37,8 +39,8 @@ void Transform3DLayer<Dtype>::GetTransformation(Dtype* transformation) {
   Dtype scaling_y = (*scaling_y_)();
   Dtype scaling_z = (*scaling_z_)();
 
-  typedef glm::detail::tmat4x4<Dtype, glm::lowp> mat4;
-  typedef glm::detail::tvec3<Dtype, glm::lowp> vec3;
+  typedef glm::tmat4x4<Dtype, glm::lowp> mat4;
+  typedef glm::tvec3<Dtype, glm::lowp> vec3;
   mat4 r_x = glm::rotate(rotation_x, vec3(1.0f, 0.0f, 0.0f));
   mat4 r_y = glm::rotate(rotation_y, vec3(0.0f, 1.0f, 0.0f));
   mat4 r_z = glm::rotate(rotation_z, vec3(0.0f, 0.0f, 1.0f));

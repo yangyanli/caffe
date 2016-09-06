@@ -1,4 +1,6 @@
 #include <boost/random.hpp>
+#include <boost/math/special_functions/next.hpp>
+
 #include "caffe/util/rng.hpp"
 #include "caffe/util/benchmark.hpp"
 #include "caffe/util/field_operations.hpp"
