@@ -241,12 +241,12 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
   boost::uniform_real<Dtype> uniform_distribution_sphere_surface(-1.0, 1.0);
   VariateGenerator rand_sphere_surface(caffe_rng(), uniform_distribution_sphere_surface);
   
-  boost::uniform_real<Dtype> uniform_distribution_curve_length(min, max);
-  VariateGenerator rand_curve_length(caffe_rng(), uniform_distribution_curve_length);
+  boost::uniform_real<Dtype> uniform_distribution_filter_length(min, max);
+  VariateGenerator rand_filter_length(caffe_rng(), uniform_distribution_filter_length);
 
-  int curve_count = 0;
+  int filter_count = 0;
   Dtype* data = blob->mutable_cpu_data();
-  while(curve_count < num_filter_) {
+  while(filter_count < num_filter_) {
     int idx = rand()%num_grid;
     int x = idx%dim_grid;
     int y = (idx/dim_grid)%dim_grid;
@@ -259,7 +259,7 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
     Dtype std_x, std_y, std_z;
     SampleOnSphere(std_radius, std_x, std_y, std_z, rand_sphere_surface);
 
-    Dtype offset_radius = rand_curve_length();
+    Dtype offset_radius = rand_filter_length();
     Dtype offset_x, offset_y, offset_z;
     SampleOnSphere(offset_radius, offset_x, offset_y, offset_z, rand_sphere_surface);
 
@@ -284,13 +284,13 @@ void FieldProbingLayer<Dtype>::InitializeFilters(Blob<Dtype>* blob, const FieldP
       Dtype sample_z = start_z + (end_z-start_z)*ratio;
 
       std::vector<int> index(3, 0);
-      index[0] = curve_count; index[1] = l;
+      index[0] = filter_count; index[1] = l;
       int offset = blob->offset(index);
       data[offset++] = sample_x*diameter-radius;
       data[offset++] = sample_y*diameter-radius;
       data[offset++] = sample_z*diameter-radius;
     } 
-    curve_count ++;
+    filter_count ++;
   }
 }
 
