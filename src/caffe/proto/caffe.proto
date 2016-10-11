@@ -475,7 +475,7 @@ message Transform3DParameter {
   optional float max_scaling_z = 18 [default = 1.0];
  
   required uint32 num_transformations = 19 [default = 1];
-  required float pad_value = 20 [default = 0];
+  repeated float pad_value = 20;
   optional string order = 21 [default = ""];
 }
 

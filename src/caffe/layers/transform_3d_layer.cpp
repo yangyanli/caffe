@@ -102,7 +102,12 @@ void Transform3DLayer<Dtype>::LayerSetUp(const vector<Blob<Dtype>*>& bottom,
   GetVariateGenerator(scaling_y_, param.min_scaling_y(), param.max_scaling_y());
   GetVariateGenerator(scaling_z_, param.min_scaling_z(), param.max_scaling_z());
 
-  pad_value_ = param.pad_value();
+  int field_num = bottom.size()-1;
+  CHECK(field_num == param.pad_value_size()) << "Please specify one padding value for each input field.";
+  pad_values_.clear();
+  for (int i = 0; i < field_num; ++ i) {
+    pad_values_.push_back(param.pad_value(i));
+  }
   num_transformations_ = param.num_transformations();
   batch_size_ = field_shape[0];
   order_ = param.order();
@@ -183,6 +188,7 @@ void Transform3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
     const Dtype* bottom_data = bottom[i]->cpu_data();
     const vector<int>& field_shape = bottom[i]->shape();
     Dtype* top_data = top[i]->mutable_cpu_data();
+    const Dtype pad_value = pad_values_[i];
     const int field_dim = field_shape[1];
     const int field_dim_1 = field_dim-1;
     const int yz = field_dim*field_dim;
@@ -219,7 +225,7 @@ void Transform3DLayer<Dtype>::Forward_cpu(const vector<Blob<Dtype>*>& bottom,
                 Interpolate_cpu(bottom_data, b_batch_idx, bx, by, bz, x0, y0, z0, x1, y1, z1,
                   field_dim, t_data, field_channels);
               } else {
-                caffe_set(field_channels, pad_value_, t_data);
+                caffe_set(field_channels, pad_value, t_data);
               }
             }
           }

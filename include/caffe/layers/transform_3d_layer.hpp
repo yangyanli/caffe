@@ -61,7 +61,7 @@ class Transform3DLayer : public Layer<Dtype> {
   void GetTransformation(Dtype* transformation);
   void GetVariateGenerator(boost::shared_ptr<VariateGenerator>& vg, Dtype min, Dtype max);
   
-  Dtype pad_value_;
+  vector<Dtype> pad_values_;
   int num_transformations_;
   int batch_size_;
   std::string order_;

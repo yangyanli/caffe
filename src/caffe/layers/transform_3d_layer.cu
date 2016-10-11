@@ -74,7 +74,7 @@ void Transform3DLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom,
   
     // NOLINT_NEXT_LINE(whitespace/operators)
     Transform3DForward<Dtype><<<CAFFE_GET_BLOCKS(num_grids), CAFFE_CUDA_NUM_THREADS>>>(num_grids, field_dim, batch_size_, num_transformations_,
-        pad_value_, bottom_data, transformations_data, top_data, len_trans_params, field_channels);
+        pad_values_[i], bottom_data, transformations_data, top_data, len_trans_params, field_channels);
     CUDA_POST_KERNEL_CHECK;
   }
 }
