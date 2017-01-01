@@ -7,10 +7,9 @@ namespace caffe {
 template <typename Dtype>
 __global__ void DotProductForward(const int num_filters, int num_sliding, const int batch_size, const int len_dot,
     const Dtype* weight, const Dtype* bias, const Dtype* bottom_data, Dtype* top_data, bool share_weights) {
-  int sliding_filter_idx = blockDim.x*blockIdx.x + threadIdx.x;
-  int num_sliding_filters = num_sliding*num_sliding*num_sliding*num_filters;
   // One thread per filter per sliding position
-  if(sliding_filter_idx < num_sliding_filters) {
+  int num_sliding_filters = num_sliding*num_sliding*num_sliding*num_filters;
+  CUDA_KERNEL_LOOP(sliding_filter_idx, num_sliding_filters) {
     int bias_offset = (share_weights?(sliding_filter_idx%num_filters):(sliding_filter_idx));
     int weight_offset = bias_offset*len_dot;
 
@@ -46,9 +45,8 @@ void DotProductLayer<Dtype>::Forward_gpu(const vector<Blob<Dtype>*>& bottom, con
 
 template <typename Dtype>
 __global__ void DotProductBackwardBias(const int num_sliding_filters, const int batch_size, const Dtype* top_diff, Dtype* bias_diff) {
-  int sliding_filter_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread per filter per sliding position
-  if(sliding_filter_idx < num_sliding_filters) {
+  CUDA_KERNEL_LOOP(sliding_filter_idx, num_sliding_filters) {
     Dtype b_diff_sum = 0;
     int top_count = num_sliding_filters*batch_size;
     for (int top_offset = sliding_filter_idx; top_offset < top_count; top_offset += num_sliding_filters) {
@@ -62,9 +60,8 @@ template <typename Dtype>
 __global__ void DotProductBackwardWeightAndBottom(const int num_sliding_filters, const int batch_size, const int len_dot,
     const bool bp_weight, const bool bp_bottom,
     const Dtype* top_diff, const Dtype* weight, const Dtype* bottom_data, Dtype* weight_diff, Dtype* bottom_diff) {
-  int sliding_filter_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread for each filter
-  if(sliding_filter_idx < num_sliding_filters) {
+  CUDA_KERNEL_LOOP(sliding_filter_idx, num_sliding_filters) {
     int top_count = num_sliding_filters*batch_size;
     for (int l = 0; l < len_dot; ++ l) {
       Dtype w_diff_sum = 0;
@@ -86,9 +83,8 @@ __global__ void DotProductBackwardWeightAndBottom(const int num_sliding_filters,
 
 template <typename Dtype>
 __global__ void BlockSum(const int block_size, const int block_count, const Dtype* before, Dtype* after) {
-  int idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread per block element
-  if(idx < block_size) {
+  CUDA_KERNEL_LOOP(idx, block_size) {
     Dtype sum = 0;
     int total = block_size*block_count;
     for (int i = idx; i < total; i += block_size) {

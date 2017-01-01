@@ -412,9 +412,7 @@ message LayerParameter {
   optional FieldProbingParameter field_probing_param = 502; 
   optional GaussianParameter gaussian_param = 503; 
   optional ShuffleParameter shuffle_param = 504; 
-  optional ChopoutParameter chopout_param = 505; 
-  optional Transform3DParameter transform_3d_param = 506; 
-  optional Pooling4DParameter pooling_4d_param = 507;
+  optional Transform3DParameter transform_3d_param = 505; 
 }
 
 message DotProductParameter {
@@ -445,13 +443,6 @@ message ShuffleParameter {
   repeated uint32 axis = 1;
 }
 
-message ChopoutParameter {
-  required float min_chop_radius = 1 [default = 0.25];
-  required float max_chop_radius = 2 [default = 0.50];
-  optional uint32 num_chop_mask = 3 [default = 1024];
-  required float pad_value = 8 [default = 0];
-}
-
 message Transform3DParameter {
   optional float min_rotation_x = 1 [default = 0];
   optional float min_rotation_y = 2 [default = 0];
@@ -477,20 +468,6 @@ message Transform3DParameter {
   required uint32 num_transformations = 19 [default = 1];
   repeated float pad_value = 20;
   optional string order = 21 [default = ""];
-}
-
-message Pooling4DParameter {
-  enum PoolMethod {
-    MAX = 0;
-    AVE = 1;
-  }
-  optional PoolMethod pool = 1 [default = MAX]; // The pooling method
-  optional uint32 pad_s = 2 [default = 0]; // The spatial padding size
-  optional uint32 pad_c = 3 [default = 0]; // The channel padding size
-  required uint32 kernel_s = 4; // The spatial kernel size
-  required uint32 kernel_c = 5; // The channel kernel size
-  required uint32 stride_s = 6; // The spatial stride
-  required uint32 stride_c = 7; // The channel stride
 }
 
 // Message that stores parameters used to apply transformation

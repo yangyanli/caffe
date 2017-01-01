@@ -8,9 +8,8 @@ template <typename Dtype>
 __global__ void Transform3DForward(const int num_grids, const int field_dim, const int batch_size, const int num_transformations,
     const Dtype pad_value, const Dtype* bottom_data, const Dtype* transformations, Dtype* top_data,
     const int len_trans_params, const int field_channels) {
-  const int t_grid_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread for each grid
-  if(t_grid_idx < num_grids) {
+  CUDA_KERNEL_LOOP(t_grid_idx, num_grids) {
     int field_dim_1 = field_dim-1;
     Dtype c_offset = field_dim_1/2.0;
     const int yz = field_dim*field_dim;

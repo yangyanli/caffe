@@ -8,10 +8,9 @@ template <typename Dtype>
 __global__ void FieldProbingForward(const int num_samples, const int num_sliding, const int batch_size,
     const int field_dim, const Dtype step, const Dtype* filters, const Dtype* field_data,
     Dtype* top_data, const int len_coordinates, const int field_channels) {
-  int idx = blockDim.x*blockIdx.x + threadIdx.x;
   int slided_num_samples = num_sliding*num_sliding*num_sliding*num_samples;
   // One thread per sample per sliding position
-  if(idx < slided_num_samples) {
+  CUDA_KERNEL_LOOP(idx, slided_num_samples) {
     int sample_idx = idx%num_samples;
     int sliding_idx = idx/num_samples;
 
@@ -69,9 +68,8 @@ template <typename Dtype>
 __global__ void FieldProbingBackward(const int num_samples, const int num_sliding, const int batch_size,
     const int field_dim, const Dtype step, const Dtype* filters, Dtype* filters_diff, const Dtype* field_data,
     const Dtype* top_data, const Dtype* top_diff, const int len_coordinates, const int field_channels) {
-  int sample_idx = blockDim.x*blockIdx.x + threadIdx.x;
   // One thread per sample
-  if(sample_idx < num_samples) {
+  CUDA_KERNEL_LOOP(sample_idx, num_samples) {
     Dtype* gradients = new Dtype[field_channels * 3];
 
     int field_dim_1 = field_dim - 1;
